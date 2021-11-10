@@ -42,24 +42,25 @@ fallback_ssid_password: ""
 or you can just include your Home Assistant `secrets.yaml`:
 [How do I use my Home Assistant secrets.yaml?](https://esphome.io/guides/faq.html?highlight=secret#how-do-i-use-my-home-assistant-secrets-yaml)
 
-# 3. Plug in your AirGradient
+# 4. Plug in your AirGradient
 
 You can either plug it in the device running Home Assistant or your laptop/PC.
 
-# 4. Add a new device
+# 5. Add a new device
 
 ESPHome will ask you for a name and your WiFi credentials.
-You can put in anything you want and change the later steps.
+You can put in anything you want right now.
+We will change that anyway in the later steps.
 
-# 5. Edit your device and change the config
+# 6. Edit your device and change the config
 
-Now you just need to copy thte content of the `air-gradient.yaml` into the editor
+Now you just need to copy thte content of the [air-gradient.yaml](air-gradient.yaml) into the editor
 
-# 6. Save and install
+# 7. Save and install
 
 This will take a minute or two. ESPHome will compile the binary for your AirGradients ESP8266.
 
-# 7. Add your device to Home Assistant
+# 8. Add your device to Home Assistant
 
 In the notification panel should be an new device available to set up.
 Your new AirGradient Sensor.
@@ -68,7 +69,7 @@ If not you can add the device via the esphome integreation:
 
 [![Setup ESPHome integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=esphome)
 
-# 8. Create something!
+# 9. Create something!
 
 Now it is your turn to do something silly or usefull with the air quality sensor.
 
