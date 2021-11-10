@@ -1,0 +1,90 @@
+esphome:
+  name: air-gradient
+  platform: ESP8266
+  board: d1_mini_pro
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+  password: !secret ota_password
+
+wifi:
+  networks:
+  - ssid: !secret wifi_ssid
+    password: !secret wifi_password
+  reboot_timeout: 15min
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Air-Gradient Fallback Hotspot"
+    password: !secret fallback_ssid_password
+
+captive_portal:
+
+i2c:
+  sda: D2
+  scl: D1
+
+font:
+  - file: "font/monofont.ttf"
+    id: opensans
+    size: 10
+
+display:
+  - platform: ssd1306_i2c
+    id: oled
+    model: "SSD1306 64x48"
+    pages:
+      - id: page1
+        lambda: |-
+          it.printf(0, 0, id(opensans), "CO2: %.0fppm", id(co2).state);
+          it.printf(0, 10, id(opensans), "PM25: %.0f", id(pm25).state);
+          it.printf(0, 20, id(opensans), "Hmdty: %.0f", id(humidity).state);
+          it.printf(0, 30, id(opensans), "Temp: %.0fC", id(temp).state);
+# Maybe add a page later
+
+interval:
+  - interval: 5s
+    then:
+      - display.page.show_next: oled
+      - component.update: oled
+
+uart:
+  - rx_pin: D5
+    tx_pin: D6
+    baud_rate: 9600
+    id: uart1
+    
+  - rx_pin: D4
+    tx_pin: D3
+    baud_rate: 9600
+    id: uart2
+
+sensor:
+  - platform: sht3xd
+    temperature:
+      id: temp
+      name: "Temperature"
+    humidity:
+      id: humidity
+      name: "Humidity"
+    address: 0x44
+    update_interval: 5s
+
+  - platform: pmsx003
+    type: PMS5003T
+    uart_id: uart1
+    pm_2_5:
+      id: pm25
+      name: "Particulate Matter <2.5µm Concentration"
+
+  - platform: senseair
+    uart_id: uart2
+    co2:
+      id: co2
+      name: "SenseAir CO2 Value"
+    update_interval: 60s
