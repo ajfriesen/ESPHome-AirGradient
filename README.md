@@ -68,10 +68,16 @@ If not you can add the device via the esphome integreation:
 
 [![Setup ESPHome integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=esphome)
 
-# 8. Your turn
+# 8. Create something!
 
 Now it is your turn to do something silly or usefull with the air quality sensor.
 
-# Questinos
+# Support
 
-If you have any questions regarding this project leave an issue.
+Open an issue when you have any questions.
+
+If this did help you:
+
+- Follow my work on my blog: www.ajfriesen.com
+- Subscribe to my [E-Mail](https://www.ajfriesen.com/#/portal) or [RSS](https://ajfriesen.com/rss) and do not miss an anything
+- you can tip me on [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/ajfriesen) 
