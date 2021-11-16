@@ -12,6 +12,13 @@ api:
 ota:
   password: !secret ota_password
 
+# Create a switch for safe_mode in order to flash the device
+# Solution from this thread:
+# https://community.home-assistant.io/t/esphome-flashing-over-wifi-does-not-work/357352/1
+switch:
+  - platform: safe_mode
+    name: "Flash Mode (Safe Mode)"
+
 wifi:
   networks:
   - ssid: !secret wifi_ssid

@@ -73,6 +73,19 @@ If not you can add the device via the esphome integreation:
 
 Now it is your turn to do something silly or usefull with the air quality sensor.
 
+# Flashing over WiFi
+
+In order to flash this project via WiFi I have added the [safe_mode](https://esphome.io/components/switch/safe_mode.html) switch.
+This will:
+1. Disconnect from WiFi and disabling all functionality
+2. Scann for WiFi (Takes a about 30 seconds, so be patient)
+3. Connect to WiFi
+
+Now you can flash the device wirelessly again.
+
+You can see the switch in the the device view of the esphome integration:
+
+![ESPHome safe_mode](images/esphome_safe_mode.png)
 # Support
 
 Open an issue when you have any questions.
