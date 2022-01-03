@@ -19,9 +19,9 @@ switch:
   - platform: safe_mode
     name: "Flash Mode (Safe Mode)"
 
-# This should point to the public location of this yaml file.
 dashboard_import:
-  package_import_url: https://raw.githubusercontent.com/ajfriesen/ESPHome-AirGradient/dev/air-gradient.yaml
+# package_import_url: github://esphome/esphome-project-template/project-template-esp32.yaml@v6
+  package_import_url: github://ajfriesen/ESPHome-AirGradient/main/air-gradient.yaml
 
 wifi:
   networks:
