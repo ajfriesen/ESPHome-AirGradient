@@ -23,6 +23,15 @@ switch:
   - platform: safe_mode
     name: "Flash Mode (Safe Mode)"
 
+button:
+  - platform: template
+    name: "Flash mode"
+    id: flash_button
+    icon: "mdi:cellphone-arrow-down"
+    on_press:
+      then:
+        - switch.toggle: safe_mode
+
 dashboard_import:
 # package_import_url: github://esphome/esphome-project-template/project-template-esp32.yaml@v6
   package_import_url: github://ajfriesen/ESPHome-AirGradient/main/air-gradient.yaml
