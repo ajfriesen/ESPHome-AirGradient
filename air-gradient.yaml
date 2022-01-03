@@ -3,6 +3,10 @@ esphome:
   platform: ESP8266
   board: d1_mini_pro
 
+  project:
+    name: ajfriesen.ESPHome-AirGradient
+    version: "1.0"
+
 # Enable logging
 logger:
 
