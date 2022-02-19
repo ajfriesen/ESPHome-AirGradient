@@ -8,6 +8,7 @@ ESPHome config for AirGradient Air Quality Sensor
 The AirGradient DIY Air Quality Sensor can be found here: https://www.airgradient.com/diy/
 
 This repository will provide you the ESPHome config to run this with Home Assistant.
+
 I have written a blog post about this here: [Measuring Air Quality in your Home Office](https://www.ajfriesen.com/measuring-air-quality-in-your-home-office/)
 
 # 0. Prerequisites
