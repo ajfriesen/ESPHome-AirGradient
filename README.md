@@ -64,6 +64,10 @@ Uncomment the sections for `pm_1_0` and `pm_10_0`, respectively, to record those
 If you are using the PMS5003ST sensor, you can also record the formaldehyde (HCHO) concentration by uncommenting the `formaldehyde` section.
 See the [esphome docs](https://esphome.io/components/sensor/pmsx003.html) for details.
 
+The OLED display is limited to four lines.
+You may display multiple pages by adding another page id section as in the [esphome docs](https://esphome.io/components/display/index.html#display-pages).
+An example second page showing three particulate matter sensors is included in [air-gradient.yaml](air-gradient.yaml).
+
 # 7. Save and install
 
 This will take a minute or two. ESPHome will compile the binary for your AirGradients ESP8266.

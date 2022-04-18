@@ -52,6 +52,11 @@ display:
           it.printf(0, 10, id(opensans), "PM25: %.0f", id(pm25).state);
           it.printf(0, 20, id(opensans), "Hmdty: %.0f", id(humidity).state);
           it.printf(0, 30, id(opensans), "Temp: %.0fC", id(temp).state);
+#      - id: page2
+#        lambda: |-
+#          it.printf(0, 0, id(opensans), "PM10 : %.0f", id(pm10).state);
+#          it.printf(0, 10, id(opensans), "PM25 : %.0f", id(pm25).state);
+#          it.printf(0, 20, id(opensans), "PM100: %.0f", id(pm100).state);
 # Maybe add a page later
 
 interval:
