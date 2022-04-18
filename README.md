@@ -56,7 +56,13 @@ We will change that anyway in the later steps.
 
 # 6. Edit your device and change the config
 
-Now you just need to copy thte content of the [air-gradient.yaml](air-gradient.yaml) into the editor
+Now you just need to copy the content of the [air-gradient.yaml](air-gradient.yaml) into the editor.
+
+By default, [air-gradient.yaml](air-gradient.yaml) only records the particulate matter <2.5µm concentration that is measured by all PMSX003 sensors.
+The PMS5003 sensor (inlcuded with the AirGradient DIY kit) can also record <1.0µm and <10.0µm concentrations.
+Uncomment the sections for `pm_1_0` and `pm_10_0`, respectively, to record those as well.
+If you are using the PMS5003ST sensor, you can also record the formaldehyde (HCHO) concentration by uncommenting the `formaldehyde` section.
+See the [esphome docs](https://esphome.io/components/sensor/pmsx003.html) for details.
 
 # 7. Save and install
 
