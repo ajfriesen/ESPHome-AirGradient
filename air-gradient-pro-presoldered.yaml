@@ -1,0 +1,116 @@
+# Airgradient Pro presoldered edition
+# D1 mini v4.0.0 with usb c port
+substitutions:
+  devicename: "airgradient-pro"
+  upper_devicename: "Airgradient Pro"
+
+esphome:
+  name: "${devicename}"
+  # Automatically add the mac address to the name
+  # so you can use a single firmware for all devices
+  # name_add_mac_suffix: true
+  platform: ESP8266
+  board: d1_mini
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+  password: !secret ota_password
+
+# dashboard_import:
+# package_import_url: github://esphome/esphome-project-template/project-template-esp32.yaml@v6
+  # package_import_url: github://ajfriesen/ESPHome-AirGradient/main/air-gradient.yaml
+
+
+wifi:
+  networks:
+  - ssid: !secret wifi_ssid
+    password: !secret wifi_password
+  reboot_timeout: 15min
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${upper_devicename} Fallback Hotspot
+    password: "IpB22HU395jj"
+
+switch:
+  - platform: safe_mode
+    name: "Flash Mode (Safe Mode)"
+
+captive_portal:
+
+i2c:
+  sda: D2
+  scl: D1
+
+font:
+  - file: "font/monofont.ttf"
+    id: opensans
+    size: 12
+
+display:
+  - platform: ssd1306_i2c
+    id: oled
+    address: 0x3c
+    rotation: 180°
+    model: "SH1106 128x64"
+    pages:
+      - id: page1
+        lambda: |-
+          it.printf(0, 0, id(opensans), "CO2: %.0fppm", id(co2).state);
+          it.printf(0, 15, id(opensans), "PM25: %.0f", id(pm25).state);
+          it.printf(0, 25, id(opensans), "Humidity: %.0f", id(humidity).state);
+          it.printf(0, 35, id(opensans), "Temperature: %.0fC", id(temp).state);
+# Maybe add a page later
+
+interval:
+  - interval: 5s
+    then:
+      - display.page.show_next: oled
+      - component.update: oled
+
+uart:
+  - rx_pin: D5
+    tx_pin: D6
+    baud_rate: 9600
+    id: uart1
+    
+  - rx_pin: D4
+    tx_pin: D3
+    baud_rate: 9600
+    id: uart2
+
+sensor:
+  - platform: sht3xd
+    temperature:
+      id: temp
+      name: ${upper_devicename} Temperature
+    humidity:
+      id: humidity
+      name: ${upper_devicename} Humidity
+    address: 0x44
+    update_interval: 10s
+    
+  - platform: pmsx003
+    type: PMSX003
+    uart_id: uart1
+    pm_2_5:
+      id: pm25
+      name: "${upper_devicename} Particulate Matter <2.5µm Concentration"
+#    pm_10_0:
+#      id: pm100
+#      name: "Particulate Matter <10.0µm Concentration"
+#    formaldehyde:
+#      id: hcho
+#      name: "Formaldehyde (HCHO) concentration in µg per cubic meter"
+      
+  - platform: senseair
+    uart_id: uart2
+    co2:
+      id: co2
+      name: "${upper_devicename} SenseAir CO2 Value"
+    update_interval: 60s
