@@ -67,7 +67,7 @@ See the [esphome docs](https://esphome.io/components/sensor/pmsx003.html) for de
 The OLED display is limited to four lines.
 You may display multiple pages by adding another page id section as in the [esphome docs](https://esphome.io/components/display/index.html#display-pages).
 An example second page showing three particulate matter sensors is included in [air-gradient.yaml](air-gradient.yaml).
-=======
+
 Now you just need to copy the content of the [air-gradient-diy.yaml](air-gradient-diy.yaml) into the editor
 
 # 7. Save and install
