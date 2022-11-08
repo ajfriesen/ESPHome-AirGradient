@@ -25,7 +25,7 @@ Follow the [ESPHome font docs](https://esphome.io/components/display/index.html#
 
 # 3. Add your secrets
 
-You can also hardcode them in the `air-gradient.yaml` but I would recommend to split these
+You can also hardcode them in the `air-gradient-diy.yaml` but I would recommend to split these
 
 You can either create a separate `secrets.yaml` with your secrets in this file like so:
 
@@ -67,6 +67,8 @@ See the [esphome docs](https://esphome.io/components/sensor/pmsx003.html) for de
 The OLED display is limited to four lines.
 You may display multiple pages by adding another page id section as in the [esphome docs](https://esphome.io/components/display/index.html#display-pages).
 An example second page showing three particulate matter sensors is included in [air-gradient.yaml](air-gradient.yaml).
+=======
+Now you just need to copy the content of the [air-gradient-diy.yaml](air-gradient-diy.yaml) into the editor
 
 # 7. Save and install
 
