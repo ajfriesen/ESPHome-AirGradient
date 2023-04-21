@@ -86,12 +86,12 @@ uart:
   - rx_pin: D5
     tx_pin: D6
     baud_rate: 9600
-    id: uart1
+    id: uart_1
     
   - rx_pin: D4
     tx_pin: D3
     baud_rate: 9600
-    id: uart2
+    id: uart_2
 
 sensor:
   - platform: sht3xd
@@ -108,7 +108,7 @@ sensor:
     # type can be PMSX003, PMS5003S, PMS5003T, PMS5003ST
     # https://esphome.io/components/sensor/pmsx003.html
     type: PMSX003
-    uart_id: uart1
+    uart_id: uart_1
 #    pm_1_0:
 #      id: pm10
 #      name: "Particulate Matter <1.0µm Concentration"
@@ -123,7 +123,7 @@ sensor:
 #      name: "Formaldehyde (HCHO) concentration in µg per cubic meter"
 
   - platform: senseair
-    uart_id: uart2
+    uart_id: uart_2
     co2:
       id: co2
       name: "SenseAir CO2 Value"

@@ -77,12 +77,12 @@ uart:
   - rx_pin: D5
     tx_pin: D6
     baud_rate: 9600
-    id: uart1
+    id: uart_1
     
   - rx_pin: D4
     tx_pin: D3
     baud_rate: 9600
-    id: uart2
+    id: uart_2
 
 sensor:
   - platform: sht3xd
@@ -97,7 +97,7 @@ sensor:
     
   - platform: pmsx003
     type: PMSX003
-    uart_id: uart1
+    uart_id: uart_1
     pm_2_5:
       id: pm25
       name: "${upper_devicename} Particulate Matter <2.5µm Concentration"
@@ -109,7 +109,7 @@ sensor:
 #      name: "Formaldehyde (HCHO) concentration in µg per cubic meter"
       
   - platform: senseair
-    uart_id: uart2
+    uart_id: uart_2
     co2:
       id: co2
       name: "${upper_devicename} SenseAir CO2 Value"
