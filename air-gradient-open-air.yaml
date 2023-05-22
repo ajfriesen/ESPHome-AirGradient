@@ -1,5 +1,5 @@
-# AirGradient Open Air Outdoor v1.1 presoldered
-#
+# Airgradient Open Air Outdoor v1.1 presoldered
+# 
 
 substitutions:
   id: "1"
@@ -176,12 +176,15 @@ sensor:
     id: temperature
     name: "${upper_devicename} Temperature"
     icon: mdi:home-thermometer-outline
+    device_class: temperature
     accuracy_decimals: 1
+    unit_of_measurement: "°C"
     lambda: return (id(pm1_temperature).state + id(pm2_temperature).state) / 2;
   - platform: template
     id: humidity
     name: "${upper_devicename} Relative Humidity"
     icon: mdi:water-percent
+    device_class: humidity
     accuracy_decimals: 1
     unit_of_measurement: "%"
     lambda: return (id(pm1_humidity).state + id(pm2_humidity).state) / 2;
@@ -189,6 +192,7 @@ sensor:
     id: pm_1_0
     name: "${upper_devicename} Particulate Matter <1.0µm Concentration"
     icon: mdi:chemical-weapon
+    device_class: pm1
     accuracy_decimals: 0
     unit_of_measurement: µg/m³
     lambda: return (id(pm1_1_0).state + id(pm2_1_0).state) / 2;
@@ -196,6 +200,7 @@ sensor:
     id: pm_2_5
     name: "${upper_devicename} Particulate Matter <2.5µm Concentration"
     icon: mdi:chemical-weapon
+    device_class: pm25
     accuracy_decimals: 0
     unit_of_measurement: µg/m³
     lambda: return (id(pm1_2_5).state + id(pm2_2_5).state) / 2;
@@ -203,6 +208,7 @@ sensor:
     id: pm_10_0
     name: "${upper_devicename} Particulate Matter <10.0µm Concentration"
     icon: mdi:chemical-weapon
+    device_class: pm10
     accuracy_decimals: 0
     unit_of_measurement: µg/m³
     lambda: return (id(pm1_10_0).state + id(pm2_10_0).state) / 2;
