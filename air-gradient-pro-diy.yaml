@@ -7,7 +7,7 @@ substitutions:
 
 esphome:
   name: "${devicename}-${id}"
-  friendly_name: "${upper_devicename}-${id}"
+  friendly_name: "${upper_devicename} ${id}"
   # Automatically add the mac address to the name
   # so you can use a single firmware for all devices
   # name_add_mac_suffix: true
@@ -120,4 +120,13 @@ sensor:
     co2:
       id: co2
       name: "${upper_devicename} SenseAir CO2 Value"
+    update_interval: 60s
+
+  - platform: wifi_signal
+    name: "WiFi Signal Sensor"
+    update_interval: 60s
+
+  - platform: uptime
+    name: "Uptime Sensor"
+    id: uptime_sensor
     update_interval: 60s
