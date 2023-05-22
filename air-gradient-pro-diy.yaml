@@ -113,6 +113,7 @@ sensor:
     # formaldehyde:
     #   id: hcho
     #   name: "{upper_devicename} Formaldehyde (HCHO) concentration in µg per cubic meter"
+    update_interval: 3min # Sensor will go into sleep mode for extended operation lifetime
 
   - platform: senseair
     uart_id: uart_2
