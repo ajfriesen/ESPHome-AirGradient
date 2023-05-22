@@ -1,5 +1,6 @@
-# Airgradient Pro presoldered edition
-# D1 mini v4.0.0 with usb c port
+# AirGradient Open Air Outdoor v1.1 presoldered
+#
+
 substitutions:
   id: "1"
   devicename: "airgradient-open-air"

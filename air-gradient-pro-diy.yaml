@@ -1,5 +1,6 @@
-# Airgradient Pro presoldered edition
-# D1 mini v4.0.0 with usb c port
+# AirGradient Pro v4.2 DIY edition
+#
+
 substitutions:
   id: "1"
   devicename: "airgradient-pro"
