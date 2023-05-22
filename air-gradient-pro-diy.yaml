@@ -94,7 +94,7 @@ sensor:
       name: ${upper_devicename} Temperature
     humidity:
       id: humidity
-      name: ${upper_devicename} Humidity
+      name: ${upper_devicename} Relative Humidity
     address: 0x44
     update_interval: 10s
 
@@ -112,16 +112,16 @@ sensor:
       name: "${upper_devicename} Particulate Matter <10.0µm Concentration"
     pm_0_3um:
       id: pm1_0_3um
-      name: "${upper_devicename} Particulate Matter <0.3µm Count"
+      name: "${upper_devicename} Particulate Matter >0.3µm Count"
     pm_0_5um:
       id: pm1_0_5um
-      name: "${upper_devicename} Particulate Matter <0.5µm Count"
+      name: "${upper_devicename} Particulate Matter >0.5µm Count"
     pm_1_0um:
       id: pm1_1_0um
-      name: "${upper_devicename} Particulate Matter <1.0µm Count"
+      name: "${upper_devicename} Particulate Matter >1.0µm Count"
     pm_2_5um:
       id: pm1_2_5um
-      name: "${upper_devicename} Particulate Matter <2.5µm Count"
+      name: "${upper_devicename} Particulate Matter >2.5µm Count"
     # formaldehyde:
     #   id: hcho
     #   name: "{upper_devicename} Formaldehyde (HCHO) concentration in µg per cubic meter"
