@@ -1,5 +1,9 @@
 # Airgradient Open Air Outdoor v1.1 presoldered
 # 
+# @llamagecko, @Hendrik and @spectrumjade from AirGradient forum
+# did most of the work for this integration, see the following thread:
+# https://forum.airgradient.com/t/outdoor-monitor-esphome-configuration/823
+#
 
 substitutions:
   id: "1"
