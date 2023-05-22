@@ -238,8 +238,7 @@ sensor:
   - platform: wifi_signal
     name: "Wifi Strength"
     id: wifirssi
-    disabled_by_default: true
-    update_interval: 10s
+    update_interval: 60s
 
   - platform: uptime
     name: "Uptime Sensor"
