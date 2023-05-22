@@ -105,7 +105,7 @@ uart:
 
 sensor:
   - platform: pmsx003
-    type: PMSX003
+    type: PMS5003T
     uart_id: uart_pm1
     update_interval: 3min # Sensor will go into sleep mode for extended operation lifetime
     pm_1_0:
@@ -138,7 +138,7 @@ sensor:
       name: "${upper_devicename} Relative Humidity (1)"
 
   - platform: pmsx003
-    type: PMSX003
+    type: PMS5003T
     uart_id: uart_pm2
     update_interval: 3min # Sensor will go into sleep mode for extended operation lifetime
     pm_1_0:
