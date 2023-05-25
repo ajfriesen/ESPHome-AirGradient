@@ -85,6 +85,8 @@ interval:
 
   - interval: 60s
     # Send data to AirGradient API server
+    # for more details have a look at sendToServer() function:
+    # https://www.airgradient.com/open-airgradient/blog/airgradient-diy-pro-instructions/
     then:
       - http_request.post:
           # AirGradient URL with the last 3 bytes of the MAC address in Hex format all lower case
