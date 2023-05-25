@@ -83,7 +83,7 @@ interval:
       - display.page.show_next: oled
       - component.update: oled
 
-  - interval: 60s
+  - interval: 5min
     # Send data to AirGradient API server
     # for more details have a look at sendToServer() function:
     # https://www.airgradient.com/open-airgradient/blog/airgradient-diy-pro-instructions/
