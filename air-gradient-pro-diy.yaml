@@ -49,6 +49,8 @@ i2c:
   sda: D2
   scl: D1
 
+# Monofonto by Typodermic Fonts: https://typodermicfonts.com/monofonto/
+# alternative download: https://www.fontsaddict.com/font/monofonto.html
 font:
   - file: "fonts/monofont.ttf"
     id: opensans
