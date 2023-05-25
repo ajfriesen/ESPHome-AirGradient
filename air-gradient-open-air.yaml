@@ -22,7 +22,6 @@ esphome:
 # Enable logging
 logger:
   baud_rate: 0
-  level: INFO
 
 # Enable Home Assistant API
 api:
@@ -90,12 +89,45 @@ interval:
           headers:
               Content-Type: application/json
           # "!lambda return to_string(id(pm2).state);" Converts sensor output from double to string
-          json:
-            wifi: id(airgradient_wifi_signal).state
-            pm02: !lambda return to_string(id(pm_2_5).state);
-            atmp: !lambda return to_string(id(temperature).state);
-            rhum: !lambda return to_string(id(humidity).state);
-          verify_ssl: false
+          body: !lambda |-
+            String jsonString;
+            StaticJsonDocument<1024> doc;
+
+            doc["wifi"] = id(airgradient_wifi_signal).state;
+
+            doc["pm01"] = to_string(id(pm_1_0).state);
+            doc["pm02"] = to_string(id(pm_2_5).state);
+            doc["pm10"] = to_string(id(pm_10_0).state);
+            doc["pm003_count"] = to_string(id(pm_0_3um).state);
+            doc["atmp"] = to_string(id(temperature).state);
+            doc["rhum"] = to_string(id(humidity).state);
+            doc["boot"] = "1";
+
+            JsonObject channels = doc.createNestedObject("channels");
+
+            JsonObject channels_1 = channels.createNestedObject("1");
+            channels_1["pm01"] = to_string(id(pm1_1_0).state);
+            channels_1["pm02"] = to_string(id(pm1_2_5).state);
+            channels_1["pm10"] = to_string(id(pm1_10_0).state);
+            channels_1["pm003_count"] = to_string(id(pm1_0_3um).state);
+            channels_1["atmp"] = to_string(id(pm1_temperature).state);
+            channels_1["rhum"] = to_string(id(pm1_humidity).state);
+
+            JsonObject channels_2 = channels.createNestedObject("2");
+            channels_2["pm01"] = to_string(id(pm2_1_0).state);
+            channels_2["pm02"] = to_string(id(pm2_2_5).state);
+            channels_2["pm10"] = to_string(id(pm2_10_0).state);
+            channels_2["pm003_count"] = to_string(id(pm2_0_3um).state);
+            channels_2["atmp"] = to_string(id(pm2_temperature).state);
+            channels_2["rhum"] = to_string(id(pm2_humidity).state);
+
+            // Serialize the JSON document into the string
+            serializeJson(doc, jsonString);
+
+            // Convert String to std::string
+            std::string stdJsonString(jsonString.c_str());
+
+            return stdJsonString;
 
 light:
   - platform: status_led
