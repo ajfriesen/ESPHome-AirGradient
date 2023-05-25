@@ -35,6 +35,10 @@ wifi:
     ssid: "${upper_devicename} Fallback Hotspot"
     password: !secret fallback_ssid_password
 
+# Used to support POST request to send data to AirGradient
+# https://esphome.io/components/http_request.html
+http_request:
+
 captive_portal:
 
 # Create a switch for safe_mode in order to flash the device
@@ -79,12 +83,30 @@ interval:
       - display.page.show_next: oled
       - component.update: oled
 
+  - interval: 60s
+    # Send data to AirGradient API server
+    then:
+      - http_request.post:
+          # AirGradient URL with the last 3 bytes of the MAC address in Hex format all lower case
+          url: !lambda |-
+            return "http://hw.airgradient.com/sensors/airgradient:" + get_mac_address().substr(6,11) + "/measures";
+          headers:
+              Content-Type: application/json
+          # "!lambda return to_string(id(pm2).state);" Converts sensor output from double to string
+          json:
+            wifi: id(airgradient_wifi_signal).state
+            pm02: !lambda return to_string(id(pm_2_5).state);
+            rco2: !lambda return to_string(id(co2).state);
+            atmp: !lambda return to_string(id(temp).state);
+            rhum: !lambda return to_string(id(humidity).state);
+            # tvoc: !lambda return to_string(id(tvoc).state);
+          verify_ssl: false
 uart:
   - rx_pin: D5
     tx_pin: D6
     baud_rate: 9600
     id: uart_1
-    
+
   - rx_pin: D4
     tx_pin: D3
     baud_rate: 9600
@@ -139,6 +161,7 @@ sensor:
 
   - platform: wifi_signal
     name: "WiFi Signal Sensor"
+    id: airgradient_wifi_signal
     update_interval: 60s
 
   - platform: uptime
