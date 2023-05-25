@@ -41,6 +41,10 @@ wifi:
     ssid: "${upper_devicename} Hotspot"
     password: !secret fallback_ssid_password
 
+# Used to support POST request to send data to AirGradient
+# https://esphome.io/components/http_request.html
+http_request:
+
 web_server:
   port: 80
   include_internal: true
@@ -73,6 +77,25 @@ interval:
       - output.turn_on: watchdog
       - delay: 20ms
       - output.turn_off: watchdog
+
+  - interval: 5min
+    # Send data to AirGradient API server
+    # for more details have a look at sendToServer() function:
+    # https://www.airgradient.com/open-airgradient/blog/airgradient-diy-pro-instructions/
+    then:
+      - http_request.post:
+          # AirGradient URL with full MAC address in Hex format all lower case
+          url: !lambda |-
+            return "http://hw.airgradient.com/sensors/airgradient:" + get_mac_address() + "/measures";
+          headers:
+              Content-Type: application/json
+          # "!lambda return to_string(id(pm2).state);" Converts sensor output from double to string
+          json:
+            wifi: id(airgradient_wifi_signal).state
+            pm02: !lambda return to_string(id(pm_2_5).state);
+            atmp: !lambda return to_string(id(temperature).state);
+            rhum: !lambda return to_string(id(humidity).state);
+          verify_ssl: false
 
 light:
   - platform: status_led
@@ -247,7 +270,7 @@ sensor:
 
   - platform: wifi_signal
     name: "Wifi Strength"
-    id: wifirssi
+    id: airgradient_wifi_signal
     update_interval: 60s
 
   - platform: uptime
