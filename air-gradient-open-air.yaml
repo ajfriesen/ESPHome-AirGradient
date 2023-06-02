@@ -52,7 +52,9 @@ web_server:
   port: 80
   include_internal: true
 
-# captive_portal:
+# The captive portal is a fallback mechanism for when connecting to the configured WiFi fails.
+# https://esphome.io/components/captive_portal.html
+captive_portal:
 
 # Create a switch for safe_mode in order to flash the device
 # Solution from this thread:
