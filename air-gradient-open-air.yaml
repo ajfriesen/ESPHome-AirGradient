@@ -27,8 +27,8 @@ logger:
 # Enable Home Assistant API (API password is deprecated in favor of encryption key)
 # https://esphome.io/components/api.html
 api:
- encryption:
-   key: !secret home_assistant_encryption_key
+  encryption:
+    key: !secret home_assistant_encryption_key
 
 ota:
   password: !secret ota_password
@@ -48,6 +48,8 @@ wifi:
 # https://esphome.io/components/http_request.html
 http_request:
 
+# Creates a simple web server on the node that can be accessed through any browser
+# https://esphome.io/components/web_server.html
 web_server:
   port: 80
   include_internal: true
