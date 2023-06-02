@@ -1,5 +1,5 @@
 # Airgradient Open Air Outdoor v1.1 presoldered
-# 
+#
 # @llamagecko, @Hendrik and @spectrumjade from AirGradient forum
 # did most of the work for this integration, see the following thread:
 # https://forum.airgradient.com/t/outdoor-monitor-esphome-configuration/823
@@ -8,6 +8,7 @@
 substitutions:
   id: "1"
   devicename: "airgradient-open-air"
+  # WARNING: upper_devicename is component of SSID which is limited to 32 characters
   upper_devicename: "AirGradient Open Air"
 
 esphome:
@@ -137,10 +138,10 @@ light:
 binary_sensor:
   - platform: gpio
     name: "Button"
-    pin: 
+    pin:
       number: GPIO9
       inverted: true
-      mode: 
+      mode:
         input: true
         pullup: true
     on_click:
