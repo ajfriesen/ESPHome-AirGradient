@@ -1,8 +1,10 @@
 # Airgradient Open Air Outdoor v1.1 presoldered
-#
-# @llamagecko, @Hendrik and @spectrumjade from AirGradient forum
+# 
+# @llamagecko, @Hendrik, @spectrumjade, and @ex-nerd from AirGradient forum
 # did most of the work for this integration, see the following thread:
 # https://forum.airgradient.com/t/outdoor-monitor-esphome-configuration/823
+#
+# Original AirGradient Firmware: https://github.com/airgradienthq/arduino/blob/master/examples/DIY_OUTDOOR_C3/DIY_OUTDOOR_C3.ino
 #
 
 substitutions:
@@ -10,6 +12,8 @@ substitutions:
   devicename: "airgradient-open-air"
   # WARNING: upper_devicename is component of SSID which is limited to 32 characters
   upper_devicename: "AirGradient Open Air"
+  # Initial number of hours to delay AQI results
+  initial_aqi_delay: "4"
 
 esphome:
   name: "${devicename}-${id}"
@@ -35,14 +39,16 @@ ota:
 
 wifi:
   networks:
-  - ssid: !secret wifi_ssid
-    password: !secret wifi_password
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
   reboot_timeout: 15min
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "${upper_devicename} Hotspot"
     password: !secret fallback_ssid_password
+
+captive_portal:
 
 # Used to support POST request to send data to AirGradient
 # https://esphome.io/components/http_request.html
@@ -97,6 +103,7 @@ interval:
           headers:
               Content-Type: application/json
           # "!lambda return to_string(id(pm2).state);" Converts sensor output from double to string
+          # Note: can't use the built-in json encoder here because it does not support nested objects.
           body: !lambda |-
             String jsonString;
             StaticJsonDocument<1024> doc;
@@ -171,6 +178,52 @@ uart:
     rx_pin: GPIO0 # Pin 12
     tx_pin: GPIO1 # Pin 13
 
+text_sensor:
+  - platform: template
+    name: "${upper_devicename} PM <2.5 AQI Text"
+    disabled_by_default: true
+    icon: "mdi:weather-windy-variant"
+    id: pm_2_5_aqi_text
+    update_interval: 1h
+    lambda: |-
+      auto state = id(pm_2_5_aqi_text).state;
+      return {
+        state.length() > 0 ? state : "Delay ${initial_aqi_delay}h"
+      };
+    on_value:
+      lambda: |-
+        // copy higher value to combined AQI
+        if (id(pm_2_5_aqi).state >= id(pm_10_0_aqi).state) {
+          id(aqi_text).publish_state(x);
+        }
+  - platform: template
+    name: "${upper_devicename} PM <10 AQI Text"
+    disabled_by_default: true
+    icon: "mdi:weather-windy-variant"
+    id: pm_10_0_aqi_text
+    update_interval: 1h
+    lambda: |-
+      auto state = id(pm_10_0_aqi_text).state;
+      return {
+        state.length() > 0 ? state : "Delay ${initial_aqi_delay}h"
+      };
+    on_value:
+      lambda: |-
+        // copy higher value to combined AQI
+        if (id(pm_10_0_aqi).state >= id(pm_2_5_aqi).state) {
+          id(aqi_text).publish_state(x);
+        }
+  - platform: template
+    name: "${upper_devicename} AQI Text"
+    icon: "mdi:weather-windy-variant"
+    id: aqi_text
+    update_interval: 1h
+    lambda: |-
+      auto state = id(aqi_text).state;
+      return {
+        state.length() > 0 ? state : "Delay ${initial_aqi_delay}h"
+      };
+
 sensor:
   - platform: pmsx003
     type: PMS5003T
@@ -179,31 +232,40 @@ sensor:
     pm_1_0:
       id: pm1_1_0
       name: "${upper_devicename} Particulate Matter <1.0µm Concentration (1)"
+      disabled_by_default: true
     pm_2_5:
       id: pm1_2_5
       name: "${upper_devicename} Particulate Matter <2.5µm Concentration (1)"
+      disabled_by_default: true
     pm_10_0:
       id: pm1_10_0
       name: "${upper_devicename} Particulate Matter <10.0µm Concentration (1)"
+      disabled_by_default: true
     pm_0_3um:
       id: pm1_0_3um
       name: "${upper_devicename} Particulate Matter >0.3µm Count (1)"
+      disabled_by_default: true
     pm_0_5um:
       id: pm1_0_5um
       name: "${upper_devicename} Particulate Matter >0.5µm Count (1)"
+      disabled_by_default: true
     pm_1_0um:
       id: pm1_1_0um
       name: "${upper_devicename} Particulate Matter >1.0µm Count (1)"
+      disabled_by_default: true
     pm_2_5um:
       id: pm1_2_5um
       name: "${upper_devicename} Particulate Matter >2.5µm Count (1)"
+      disabled_by_default: true
     temperature:
       id: pm1_temperature
       name: "${upper_devicename} Temperature (1)"
+      disabled_by_default: true
     humidity:
       id: pm1_humidity
       accuracy_decimals: 1
       name: "${upper_devicename} Relative Humidity (1)"
+      disabled_by_default: true
 
   - platform: pmsx003
     type: PMS5003T
@@ -212,37 +274,46 @@ sensor:
     pm_1_0:
       id: pm2_1_0
       name: "${upper_devicename} Particulate Matter <1.0µm Concentration (2)"
+      disabled_by_default: true
     pm_2_5:
       id: pm2_2_5
       name: "${upper_devicename} Particulate Matter <2.5µm Concentration (2)"
+      disabled_by_default: true
     pm_10_0:
       id: pm2_10_0
       name: "${upper_devicename} Particulate Matter <10.0µm Concentration (2)"
+      disabled_by_default: true
     pm_0_3um:
       id: pm2_0_3um
       name: "${upper_devicename} Particulate Matter >0.3µm Count (2)"
+      disabled_by_default: true
     pm_0_5um:
       id: pm2_0_5um
       name: "${upper_devicename} Particulate Matter >0.5µm Count (2)"
+      disabled_by_default: true
     pm_1_0um:
       id: pm2_1_0um
       name: "${upper_devicename} Particulate Matter >1.0µm Count (2)"
+      disabled_by_default: true
     pm_2_5um:
       id: pm2_2_5um
       name: "${upper_devicename} Particulate Matter >2.5µm Count (2)"
+      disabled_by_default: true
     temperature:
       id: pm2_temperature
       name: "${upper_devicename} Temperature (2)"
+      disabled_by_default: true
     humidity:
       id: pm2_humidity
       accuracy_decimals: 1
       name: "${upper_devicename} Relative Humidity (2)"
+      disabled_by_default: true
 
-    # Calculate the average sensor values
+  # Calculate the average sensor values
   - platform: template
     id: temperature
     name: "${upper_devicename} Temperature"
-    icon: mdi:home-thermometer-outline
+    icon: mdi:thermometer
     device_class: temperature
     accuracy_decimals: 1
     unit_of_measurement: "°C"
@@ -282,31 +353,181 @@ sensor:
   - platform: template
     id: pm_0_3um
     name: "${upper_devicename} Particulate Matter >0.3µm Count"
-    icon: mdi:counter
+    icon: mdi:blur
     accuracy_decimals: 0
     unit_of_measurement: /dL
     lambda: return (id(pm1_0_3um).state + id(pm2_0_3um).state) / 2;
   - platform: template
     id: pm_0_5um
     name: "${upper_devicename} Particulate Matter >0.5µm Count"
-    icon: mdi:counter
+    icon: mdi:blur
     accuracy_decimals: 0
     unit_of_measurement: /dL
     lambda: return (id(pm1_0_5um).state + id(pm2_0_5um).state) / 2;
   - platform: template
     id: pm_1_0um
     name: "${upper_devicename} Particulate Matter >1.0µm Count"
-    icon: mdi:counter
+    icon: mdi:blur
     accuracy_decimals: 0
     unit_of_measurement: /dL
     lambda: return (id(pm1_1_0um).state + id(pm2_1_0um).state) / 2;
   - platform: template
     id: pm_2_5um
     name: "${upper_devicename} Particulate Matter >2.5µm Count"
-    icon: mdi:counter
+    icon: mdi:blur
     accuracy_decimals: 0
     unit_of_measurement: /dL
     lambda: return (id(pm1_2_5um).state + id(pm2_2_5um).state) / 2;
+
+  # https://forum.airgradient.com/t/on-device-pm2-5-to-aqi-conversion-with-esphome/750/4
+  - platform: copy
+    source_id: pm_2_5
+    id: pm_2_5_24h
+    name: "${upper_devicename} PM <2.5µm Average 24h"
+    disabled_by_default: true
+    device_class: pm25
+    accuracy_decimals: 0
+    filters:
+    - sliding_window_moving_average:
+        window_size: 480 #every 3 minutes for 24 hours
+        send_every: 20 #hourly
+        send_first_at: 20
+    on_value:
+      lambda: |-
+        static int delay_hours = $initial_aqi_delay;
+        if (delay_hours < 1) {
+          int aqi = 0;
+          int pm25 = id(pm_2_5_24h).state;
+          // https://en.wikipedia.org/wiki/Air_quality_index#Computing_the_AQI
+          if (pm25 < 12.0) {
+            aqi = (50.0 - 0.0) / (12.0 - 0.0) * (pm25 - 0.0) + 0.0;
+          } else if (pm25 < 35.4) {
+            aqi = (100.0 - 51.0) / (35.4 - 12.1) * (pm25 - 12.1) + 51.0;
+          } else if (pm25 < 55.4) {
+            aqi = (150.0 - 101.0) / (55.4 - 35.5) * (pm25 - 35.5) + 101.0;
+          } else if (pm25 < 150.4) {
+            aqi = (200.0 - 151.0) / (150.4 - 55.5) * (pm25 - 55.5) + 151.0;
+          } else if (pm25 < 250.4) {
+            aqi = (300.0 - 201.0) / (250.4 - 150.5) * (pm25 - 150.5) + 201.0;
+          } else if (pm25 < 350.4) {
+            aqi = (400.0 - 301.0) / (350.4 - 250.5) * (pm25 - 250.5) + 301.0;
+          } else if (pm25 < 500.4) {
+            aqi = (500.0 - 401.0) / (500.4 - 350.5) * (pm25 - 350.5) + 401.0;
+          } else {
+            // everything higher is just counted as 500
+            aqi = 500;
+          }
+          id(pm_2_5_aqi).publish_state(aqi);
+        } else {
+          delay_hours--;
+          id(pm_2_5_aqi_text).publish_state("Delay " + to_string(delay_hours) + "h");
+        }
+
+  - platform: template
+    name: "${upper_devicename} PM <2.5 AQI"
+    disabled_by_default: true
+    device_class: aqi
+    icon: "mdi:weather-windy-variant"
+    accuracy_decimals: 0
+    id: pm_2_5_aqi
+    on_value:
+      lambda: |-
+        if (x <= 50.0) {
+          id(pm_2_5_aqi_text).publish_state("Good");
+        } else if (x <= 100.0) {
+          id(pm_2_5_aqi_text).publish_state("Moderate");
+        } else if (x <= 150.0) {
+          id(pm_2_5_aqi_text).publish_state("Unhealthy for Sensitive Groups");
+        } else if (x <= 200.0) {
+          id(pm_2_5_aqi_text).publish_state("Unhealthy");
+        } else if (x <= 300.0) {
+          id(pm_2_5_aqi_text).publish_state("Very Unhealthy");
+        } else if (x <= 400.0) {
+          id(pm_2_5_aqi_text).publish_state("Hazardous");
+        } else if (x <= 500.0) {
+          id(pm_2_5_aqi_text).publish_state("Hazardous"); // again
+        } else {
+          id(pm_2_5_aqi_text).publish_state("Hazardous"); // and again
+        }
+        id(aqi).publish_state(std::max(x, id(pm_10_0_aqi).state));
+
+  - platform: copy
+    source_id: pm_10_0
+    id: pm_10_0_24h
+    name: "${upper_devicename} PM <10µm Average 24h"
+    disabled_by_default: true
+    device_class: pm10
+    accuracy_decimals: 0
+    filters:
+    - sliding_window_moving_average:
+        window_size: 480 #every 3 minutes for 24 hours
+        send_every: 20 #hourly
+        send_first_at: 20
+    on_value:
+      lambda: |-
+        static int delay_hours = $initial_aqi_delay;
+        if (delay_hours < 1) {
+          int aqi = 0;
+          int pm10 = id(pm_10_0_24h).state;
+          // https://en.wikipedia.org/wiki/Air_quality_index#Computing_the_AQI
+          if (pm10 < 54.0) {
+            aqi = (50.0 - 0.0) / (54.0 - 0.0) * (pm10 - 0.0) + 0.0;
+          } else if (pm10 < 154.0) {
+            aqi = (100.0 - 51.0) / (154.0 - 55.0) * (pm10 - 55.0) + 51.0;
+          } else if (pm10 < 254.0) {
+            aqi = (150.0 - 101.0) / (254.0 - 155.0) * (pm10 - 155.0) + 101.0;
+          } else if (pm10 < 354.0) {
+            aqi = (200.0 - 151.0) / (354.0 - 255.0) * (pm10 - 255.0) + 151.0;
+          } else if (pm10 < 424.0) {
+            aqi = (300.0 - 201.0) / (424.0 - 355.0) * (pm10 - 355.0) + 201.0;
+          } else if (pm10 < 504.0) {
+            aqi = aqi = (400.0 - 301.0) / (504.0 - 425.0) * (pm10 - 425.0) + 301.0;
+          } else if (pm10 < 604) {
+            aqi = (500.0 - 401.0) / (604.0 - 505.0) * (pm10 - 505.0) + 401.0;
+          } else {
+            // everything higher is just counted as 500
+            aqi = 500.0;
+          }
+          id(pm_10_0_aqi).publish_state(aqi);
+        } else {
+          delay_hours--;
+          id(pm_10_0_aqi_text).publish_state("Delay " + to_string(delay_hours) + "h");
+        }
+
+  - platform: template
+    name: "${upper_devicename} PM <10 AQI"
+    disabled_by_default: true
+    device_class: aqi
+    icon: "mdi:weather-windy-variant"
+    accuracy_decimals: 0
+    id: pm_10_0_aqi
+    on_value:
+      lambda: |-
+        if (x <= 50.0) {
+          id(pm_10_0_aqi_text).publish_state("Good");
+        } else if (x <= 100.0) {
+          id(pm_10_0_aqi_text).publish_state("Moderate");
+        } else if (x <= 150.0) {
+          id(pm_10_0_aqi_text).publish_state("Unhealthy for Sensitive Groups");
+        } else if (x <= 200.0) {
+          id(pm_10_0_aqi_text).publish_state("Unhealthy");
+        } else if (x <= 300.0) {
+          id(pm_10_0_aqi_text).publish_state("Very Unhealthy");
+        } else if (x <= 400.0) {
+          id(pm_10_0_aqi_text).publish_state("Hazardous");
+        } else if (x <= 500.0) {
+          id(pm_10_0_aqi_text).publish_state("Hazardous"); // again
+        } else {
+          id(pm_10_0_aqi_text).publish_state("Hazardous"); // and again
+        }
+        id(aqi).publish_state(std::max(id(pm_2_5_aqi).state, x));
+
+  - platform: template
+    name: "${upper_devicename} AQI"
+    device_class: aqi
+    icon: "mdi:weather-windy-variant"
+    accuracy_decimals: 0
+    id: aqi
 
   - platform: wifi_signal
     name: "Wifi Strength"
