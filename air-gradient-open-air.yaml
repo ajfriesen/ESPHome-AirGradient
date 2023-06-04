@@ -383,12 +383,6 @@ interval:
           # "!lambda return to_string(id(pm2).state);" Converts sensor output from double to string
           # Note: can't use the built-in json encoder here because it does not support nested objects.
           body: !lambda |
-            static int loopCount = 0;
-
-            // Increment here in case it matters that the 0 count is a ping in the official firmware
-            // (we don't do that ping in this firmware ... yet?)
-            loopCount++;
-
             String jsonString;
             StaticJsonDocument<1024> doc;
 
@@ -400,7 +394,7 @@ interval:
             doc["pm003_count"] = to_string(id(pm_0_3um).state);
             doc["atmp"] = to_string(id(temperature).state);
             doc["rhum"] = to_string(id(humidity).state);
-            doc["boot"] = to_string(loopCount);
+            doc["boot"] = "1"; // We don't have access to the boot loop counter in esphome, so just send a 1
 
             JsonObject channels = doc.createNestedObject("channels");
 
