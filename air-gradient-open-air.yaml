@@ -1,5 +1,5 @@
 # Airgradient Open Air Outdoor v1.1 presoldered
-# 
+#
 # @llamagecko, @Hendrik, @spectrumjade, and @ex-nerd from AirGradient forum
 # did most of the work for this integration, see the following thread:
 # https://forum.airgradient.com/t/outdoor-monitor-esphome-configuration/823
@@ -104,21 +104,19 @@ output:
     pin: GPIO2
 
 script:
-
   - id: calculate_aqi
+    mode: restart # restart script if called while it's still running (because we run it after pm2.5 and pm10 sensors)
     then:
-      # https://en.wikipedia.org/wiki/Air_quality_index#Computing_the_AQI
       - lambda: |
-          int aqi_2_5 = -1;
-          int aqi_10_0 = -1;
-
           // AQI is calculated over a 24 hour minimum, but EPA says it's acceptable to
           // report at 75%, or 18 hours: https://forum.airnowtech.org/t/aqi-calculations-overview-ozone-pm2-5-and-pm10/168
+          int hours_to_wait = 18;
+
+          // https://en.wikipedia.org/wiki/Air_quality_index#Computing_the_AQI
+          int aqi_2_5 = -1;
           int size_2_5 = id(pm_2_5_hourly_avg).size();
-          if (size_2_5 > 24) {
-            size_2_5 = 24;
-          }
-          if (size_2_5 >= 18) {
+
+          if (size_2_5 >= hours_to_wait) {
 
             float sum = 0.0;
             for (int i = 0; i < size_2_5; i++) {
@@ -143,13 +141,13 @@ script:
             } else {
               aqi_2_5 = 500; // everything higher is just counted as 500
             }
+          } else {
+            ESP_LOGD("custom", "Skipping pm2.5 AQI calculation. %d hours remaining.", hours_to_wait - size_2_5);
           }
 
+          int aqi_10_0 = -1;
           int size_10_0 = id(pm_10_0_hourly_avg).size();
-          if (size_10_0 > 24) {
-            size_10_0 = 24;
-          }
-          if (size_10_0 >= 18) {
+          if (size_10_0 >= hours_to_wait) {
 
             float sum = 0.0;
             for (int i = 0; i < size_10_0; i++) {
@@ -174,6 +172,8 @@ script:
             } else {
               aqi_10_0 = 500; // everything higher is just counted as 500
             }
+          } else {
+            ESP_LOGD("custom", "Skipping pm10 AQI calculation. %d hours remaining.", hours_to_wait - size_10_0);
           }
 
           int aqi_calc = std::max(aqi_2_5, aqi_10_0);
@@ -185,20 +185,53 @@ script:
               id(aqi_delay_mins) = 0;
               id(aqi_mins_remaining).publish_state(0);
             }
+            // And now publish the category string
+            if (aqi_calc <= 50.0) {
+              id(aqi_category).publish_state("Good");
+            } else if (aqi_calc <= 100.0) {
+              id(aqi_category).publish_state("Moderate");
+            } else if (aqi_calc <= 150.0) {
+              id(aqi_category).publish_state("Unhealthy for Sensitive Groups");
+            } else if (aqi_calc <= 200.0) {
+              id(aqi_category).publish_state("Unhealthy");
+            } else if (aqi_calc <= 300.0) {
+              id(aqi_category).publish_state("Very Unhealthy");
+            } else if (aqi_calc <= 400.0) {
+              id(aqi_category).publish_state("Hazardous");
+            } else if (aqi_calc <= 500.0) {
+              id(aqi_category).publish_state("Hazardous"); // again
+            } else {
+              id(aqi_category).publish_state("Hazardous"); // and again
+            }
+          } else {
+            int remaining_hours = hours_to_wait - std::max(size_2_5, size_10_0);
+            ESP_LOGD("custom", "No AQI calculations available. %d hours remaining.", remaining_hours);
+            // Intervals don't quite overlap with the sensor notification windows,
+            // so let's readjust this just in case it's fallen out of sync.
+            id(aqi_delay_mins) = 60 * remaining_hours;
+            id(aqi_mins_remaining).publish_state(60 * remaining_hours);
           }
 
-  # https://forum.airnowtech.org/t/the-nowcast-for-pm2-5-and-pm10/172
   - id: calculate_nowcast
+    mode: restart # restart script if called while it's still running
     then:
+      # https://forum.airnowtech.org/t/the-nowcast-for-pm2-5-and-pm10/172
       - lambda: |
-          int nowcast_2_5 = -1;
-          int nowcast_10_0 = -1;
+          // NowCast is always calculated over 12 hours, but this is extracted here
+          // to make debugging easier.
+          int hours_to_wait = 12;
 
-          if (id(pm_2_5_hourly_avg).size() >= 12) {
+          int nowcast_2_5 = -1;
+          int size_2_5 = id(pm_2_5_hourly_avg).size();
+          if (size_2_5 > 12) {
+            size_2_5 = 12;
+          }
+          if (size_2_5 >= hours_to_wait) {
+          // if (size_2_5 >= 12) {
             // Calculate min and max
             float max = 0.0;
             float min = 31337.0; // just a random large number
-            for (int i = 0; i < 12; i++) {
+            for (int i = 0; i < size_2_5; i++) {
               float pm = id(pm_2_5_hourly_avg)[i];
               if (pm < min) {
                 min = pm;
@@ -216,10 +249,10 @@ script:
             } else if (weight_factor > 1.0) {
               weight_factor = 1.0;
             }
-    
+
             float pm_sum = 0.0;
             float weight_sum = 0.0;
-            for (int i = 0; i < 12; i++) {
+            for (int i = 0; i < size_2_5; i++) {
               float weight_pow = pow(weight_factor, i);
               pm_sum += id(pm_2_5_hourly_avg)[i] * weight_pow;
               weight_sum += weight_pow;
@@ -245,13 +278,21 @@ script:
               // everything higher is just counted as 500
               nowcast_2_5 = 500;
             }
+          } else {
+            ESP_LOGD("custom", "Skipping pm2.5 NowCast calculation. %d hours remaining.", hours_to_wait - size_2_5);
           }
 
-          if (id(pm_10_0_hourly_avg).size() >= 12) {
+          int nowcast_10_0 = -1;
+          int size_10_0 = id(pm_10_0_hourly_avg).size();
+          if (size_10_0 > 12) {
+            size_10_0 = 12;
+          }
+          if (size_10_0 >= hours_to_wait) {
+          // if (size_10_0 >= 12) {
             // Calculate min and max
             float max = 0.0;
             float min = 31337.0; // just a random large number
-            for (int i = 0; i < 12; i++) {
+            for (int i = 0; i < size_10_0; i++) {
               float pm = id(pm_10_0_hourly_avg)[i];
               if (pm < min) {
                 min = pm;
@@ -269,10 +310,10 @@ script:
             } else if (weight_factor > 1.0) {
               weight_factor = 1.0;
             }
-    
+
             float pm_sum = 0.0;
             float weight_sum = 0.0;
-            for (int i = 0; i < 12; i++) {
+            for (int i = 0; i < size_10_0; i++) {
               float weight_pow = pow(weight_factor, i);
               pm_sum += id(pm_10_0_hourly_avg)[i] * weight_pow;
               weight_sum += weight_pow;
@@ -299,8 +340,10 @@ script:
               nowcast_10_0 = 500.0;
             }
 
+          } else {
+            ESP_LOGD("custom", "Skipping pm10 NowCast calculation. %d hours remaining.", hours_to_wait - size_10_0);
           }
-          
+
           int nowcast_calc = std::max(nowcast_2_5, nowcast_10_0);
           if (nowcast_calc > 0) {
             id(nowcast).publish_state(nowcast_calc);
@@ -309,57 +352,32 @@ script:
               id(nowcast_delay_mins) = 0;
               id(nowcast_mins_remaining).publish_state(0);
             }
-          }
-
-  - id: calculate_categories
-    then:
-      - lambda: |
-          float aqi_calc = id(aqi).state;
-          if (isnan(aqi_calc) || aqi_calc < 0.0) {
-            // if (id(aqi_category).state != "Calculating") {
-            //   id(aqi_category).publish_state("Calculating");
-            // }
-          } else if (aqi_calc <= 50.0) {
-            id(aqi_category).publish_state("Good");
-          } else if (aqi_calc <= 100.0) {
-            id(aqi_category).publish_state("Moderate");
-          } else if (aqi_calc <= 150.0) {
-            id(aqi_category).publish_state("Unhealthy for Sensitive Groups");
-          } else if (aqi_calc <= 200.0) {
-            id(aqi_category).publish_state("Unhealthy");
-          } else if (aqi_calc <= 300.0) {
-            id(aqi_category).publish_state("Very Unhealthy");
-          } else if (aqi_calc <= 400.0) {
-            id(aqi_category).publish_state("Hazardous");
-          } else if (aqi_calc <= 500.0) {
-            id(aqi_category).publish_state("Hazardous"); // again
+            // And now publish the category string
+            if (nowcast_calc <= 50.0) {
+              id(nowcast_category).publish_state("Good");
+            } else if (nowcast_calc <= 100.0) {
+              id(nowcast_category).publish_state("Moderate");
+            } else if (nowcast_calc <= 150.0) {
+              id(nowcast_category).publish_state("Unhealthy for Sensitive Groups");
+            } else if (nowcast_calc <= 200.0) {
+              id(nowcast_category).publish_state("Unhealthy");
+            } else if (nowcast_calc <= 300.0) {
+              id(nowcast_category).publish_state("Very Unhealthy");
+            } else if (nowcast_calc <= 400.0) {
+              id(nowcast_category).publish_state("Hazardous");
+            } else if (nowcast_calc <= 500.0) {
+              id(nowcast_category).publish_state("Hazardous"); // again
+            } else {
+              id(nowcast_category).publish_state("Hazardous"); // and again
+            }
           } else {
-            id(aqi_category).publish_state("Hazardous"); // and again
+            int remaining_hours = hours_to_wait - std::max(size_2_5, size_10_0);
+            ESP_LOGD("custom", "No NowCast calculations available. %d hours remaining.", remaining_hours);
+            // Intervals don't quite overlap with the sensor notification windows,
+            // so let's readjust this just in case it's fallen out of sync.
+            id(nowcast_delay_mins) = 60 * remaining_hours;
+            id(nowcast_mins_remaining).publish_state(60 * remaining_hours);
           }
-
-          float nowcast_calc = id(nowcast).state;
-          if (isnan(nowcast_calc) || nowcast_calc < 0.0) {
-            // if (id(nowcast_category).state != "Calculating") {
-            //   id(nowcast_category).publish_state("Calculating");
-            // }
-          } else if (nowcast_calc <= 50.0) {
-            id(nowcast_category).publish_state("Good");
-          } else if (nowcast_calc <= 100.0) {
-            id(nowcast_category).publish_state("Moderate");
-          } else if (nowcast_calc <= 150.0) {
-            id(nowcast_category).publish_state("Unhealthy for Sensitive Groups");
-          } else if (nowcast_calc <= 200.0) {
-            id(nowcast_category).publish_state("Unhealthy");
-          } else if (nowcast_calc <= 300.0) {
-            id(nowcast_category).publish_state("Very Unhealthy");
-          } else if (nowcast_calc <= 400.0) {
-            id(nowcast_category).publish_state("Hazardous");
-          } else if (nowcast_calc <= 500.0) {
-            id(nowcast_category).publish_state("Hazardous"); // again
-          } else {
-            id(nowcast_category).publish_state("Hazardous"); // and again
-          }
-
 
 interval:
   # Reset hardware watchdog. This varies between hardware. 3min should be plenty.
@@ -379,7 +397,7 @@ interval:
           url: !lambda |
             return "http://hw.airgradient.com/sensors/airgradient:" + get_mac_address() + "/measures";
           headers:
-              Content-Type: application/json
+            Content-Type: application/json
           # "!lambda return to_string(id(pm2).state);" Converts sensor output from double to string
           # Note: can't use the built-in json encoder here because it does not support nested objects.
           body: !lambda |
@@ -394,7 +412,10 @@ interval:
             doc["pm003_count"] = to_string(id(pm_0_3um).state);
             doc["atmp"] = to_string(id(temperature).state);
             doc["rhum"] = to_string(id(humidity).state);
-            doc["boot"] = "1"; // We don't have access to the boot loop counter in esphome, so just send a 1
+
+            // We don't have access to the boot loop counter in esphome, so just send a 1
+            // See: https://github.com/esphome/issues/issues/1539
+            doc["boot"] = "1"; 
 
             JsonObject channels = doc.createNestedObject("channels");
 
@@ -435,16 +456,6 @@ interval:
             id(nowcast_mins_remaining).publish_state(id(nowcast_delay_mins));
           }
 
-  # Every hour, attempt to calculate 
-  - interval: 1h
-    then:
-      # Give all of the various hourly sensor calculations a moment to finish
-      - delay: 1 min
-      # Then process everything that happens every hour
-      - script.execute: calculate_aqi
-      - script.execute: calculate_nowcast
-      - script.execute: calculate_categories
-
 light:
   - platform: status_led
     name: "Status LED"
@@ -480,13 +491,12 @@ uart:
     tx_pin: GPIO1 # Pin 13
 
 text_sensor:
-  
   - platform: template
     id: aqi_category
     name: "${upper_devicename} AQI Category"
     icon: "mdi:weather-windy-variant"
     update_interval: 15min
-  
+
   - platform: template
     id: nowcast_category
     name: "${upper_devicename} NowCast Category"
@@ -716,6 +726,11 @@ sensor:
             id(pm_2_5_hourly_avg).resize(24);
           }
         }
+        ESP_LOGD("custom", "pm_2_5_hourly_avg size: %d", id(pm_2_5_hourly_avg).size());
+
+        // Trigger the AQI calculations (they'll restart if the pm10 finishes slightly later)
+        id(calculate_nowcast).execute();
+        id(calculate_aqi).execute();
 
   - platform: copy
     source_id: pm_10_0
@@ -740,3 +755,8 @@ sensor:
             id(pm_10_0_hourly_avg).resize(24);
           }
         }
+        ESP_LOGD("custom", "pm_10_0_hourly_avg size: %d", id(pm_10_0_hourly_avg).size());
+
+        // Trigger the AQI calculations (they'll restart if the pm2.5 finishes slightly later)
+        id(calculate_nowcast).execute();
+        id(calculate_aqi).execute();
