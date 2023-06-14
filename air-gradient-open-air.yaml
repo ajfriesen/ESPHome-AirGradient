@@ -594,6 +594,7 @@ sensor:
     name: "${upper_devicename} Temperature"
     icon: mdi:thermometer
     device_class: temperature
+    state_class: "measurement"
     accuracy_decimals: 1
     unit_of_measurement: "°C"
     lambda: return (id(pm1_temperature).state + id(pm2_temperature).state) / 2.0;
@@ -602,6 +603,7 @@ sensor:
     name: "${upper_devicename} Relative Humidity"
     icon: mdi:water-percent
     device_class: humidity
+    state_class: "measurement"
     accuracy_decimals: 1
     unit_of_measurement: "%"
     lambda: return (id(pm1_humidity).state + id(pm2_humidity).state) / 2.0;
@@ -610,6 +612,7 @@ sensor:
     name: "${upper_devicename} Particulate Matter <1.0µm Concentration"
     icon: mdi:chemical-weapon
     device_class: pm1
+    state_class: "measurement"
     accuracy_decimals: 0
     unit_of_measurement: µg/m³
     update_interval: $pm_update_interval
@@ -619,6 +622,7 @@ sensor:
     name: "${upper_devicename} Particulate Matter <2.5µm Concentration"
     icon: mdi:chemical-weapon
     device_class: pm25
+    state_class: "measurement"
     accuracy_decimals: 0
     unit_of_measurement: µg/m³
     update_interval: $pm_update_interval
@@ -628,6 +632,7 @@ sensor:
     name: "${upper_devicename} Particulate Matter <10.0µm Concentration"
     icon: mdi:chemical-weapon
     device_class: pm10
+    state_class: "measurement"
     accuracy_decimals: 0
     unit_of_measurement: µg/m³
     update_interval: $pm_update_interval
@@ -637,6 +642,7 @@ sensor:
     name: "${upper_devicename} Particulate Matter >0.3µm Count"
     icon: mdi:blur
     accuracy_decimals: 0
+    state_class: "measurement"
     unit_of_measurement: /dL
     update_interval: $pm_update_interval
     lambda: return (id(pm1_0_3um).state + id(pm2_0_3um).state) / 2.0;
@@ -645,6 +651,7 @@ sensor:
     name: "${upper_devicename} Particulate Matter >0.5µm Count"
     icon: mdi:blur
     accuracy_decimals: 0
+    state_class: "measurement"
     unit_of_measurement: /dL
     update_interval: $pm_update_interval
     lambda: return (id(pm1_0_5um).state + id(pm2_0_5um).state) / 2.0;
@@ -653,6 +660,7 @@ sensor:
     name: "${upper_devicename} Particulate Matter >1.0µm Count"
     icon: mdi:blur
     accuracy_decimals: 0
+    state_class: "measurement"
     unit_of_measurement: /dL
     update_interval: $pm_update_interval
     lambda: return (id(pm1_1_0um).state + id(pm2_1_0um).state) / 2.0;
@@ -661,6 +669,7 @@ sensor:
     name: "${upper_devicename} Particulate Matter >2.5µm Count"
     icon: mdi:blur
     accuracy_decimals: 0
+    state_class: "measurement"
     unit_of_measurement: /dL
     update_interval: $pm_update_interval
     lambda: return (id(pm1_2_5um).state + id(pm2_2_5um).state) / 2.0;
@@ -668,6 +677,7 @@ sensor:
   - platform: wifi_signal
     id: airgradient_wifi_signal
     name: "Wifi Strength"
+    state_class: "measurement"
     update_interval: 1min
 
   - platform: uptime
@@ -679,6 +689,7 @@ sensor:
     id: aqi
     name: "${upper_devicename} AQI"
     device_class: aqi
+    state_class: "measurement"
     icon: "mdi:weather-windy-variant"
     accuracy_decimals: 0
 
@@ -686,6 +697,7 @@ sensor:
     id: nowcast
     name: "${upper_devicename} NowCast"
     device_class: aqi
+    state_class: "measurement"
     icon: "mdi:weather-windy-variant"
     accuracy_decimals: 0
 
