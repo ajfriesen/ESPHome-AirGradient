@@ -46,7 +46,8 @@ or you can just include your Home Assistant `secrets.yaml`:
 
 # 4. Plug in your AirGradient
 
-You can either plug it in the device running Home Assistant or your laptop/PC.
+You can either plug it in the device running Home Assistant or your laptop/PC. 
+Note: You must plug into the D1 Mini, not the D1 Mini Shield. The shield's USB port is only used for power.
 
 # 5. Add a new device
 
