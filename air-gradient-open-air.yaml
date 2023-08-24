@@ -472,6 +472,7 @@ binary_sensor:
         pullup: true
     on_click:
       min_length: 5s
+      max_length: 30s
       then:
         - button.press: button_restart
 
