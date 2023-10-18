@@ -17,7 +17,7 @@ I have written a blog post about this here: [Measuring Air Quality in your Home 
 
 # 1. Add the ESPHome addon
 
-Klick here: [![Open the ESPHome Add-n.](https://my.home-assistant.io/badges/supervisor_addon.svg)](https://my.home-assistant.io/redirect/supervisor_addon/?addon=a0d7b954_esphome)
+Klick here: [![Open the ESPHome Add-n.](https://my.home-assistant.io/badges/supervisor_addon.svg)](https://my.home-assistant.io/redirect/supervisor_addon/?addon=5c53de3b_esphome)
 
 # 2. Download whatever font you feel fancy.
 
