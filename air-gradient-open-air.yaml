@@ -1,8 +1,11 @@
 # Airgradient Open Air Outdoor v1.1 presoldered
 #
-# @llamagecko, @Hendrik and @spectrumjade from AirGradient forum
+# @llamagecko, @Hendrik, @spectrumjade, and @ex-nerd from AirGradient forum
 # did most of the work for this integration, see the following thread:
 # https://forum.airgradient.com/t/outdoor-monitor-esphome-configuration/823
+#
+# Upstream AirGradient Firmware can be found here:
+# https://github.com/airgradienthq/arduino/blob/master/examples/DIY_OUTDOOR_C3/DIY_OUTDOOR_C3.ino
 #
 
 substitutions:
@@ -10,6 +13,28 @@ substitutions:
   devicename: "airgradient-open-air"
   # WARNING: upper_devicename is component of SSID which is limited to 32 characters
   upper_devicename: "AirGradient Open Air"
+  # Only trigger the particle sensor every 3 minutes so it can go into sleep mode and extend its operational lifetime.
+  # Here as a substitution mostly to ensure consistent use in this file (several calculations rely on this 3min value).
+  pm_update_interval: "3min"
+
+globals:
+  - id: aqi_delay_mins
+    type: int
+    restore_value: no
+    # AQI is calculated over a 24 hour minimum, but EPA says it's acceptable to
+    # report at 75%, or 18 hours: https://forum.airnowtech.org/t/aqi-calculations-overview-ozone-pm2-5-and-pm10/168
+    initial_value: '1080'
+  - id: nowcast_delay_mins
+    type: int
+    restore_value: no
+    # NowCast is calculated over a 12 hour period
+    initial_value: '720'
+  - id: pm_2_5_hourly_avg
+    type: std::vector<float>
+    restore_value: no
+  - id: pm_10_0_hourly_avg
+    type: std::vector<float>
+    restore_value: no
 
 esphome:
   name: "${devicename}-${id}"
@@ -20,7 +45,7 @@ esphome:
   platform: esp32
   board: esp32-c3-devkitm-1
 
-# Enable logging
+# Enable logging?
 logger:
   baud_rate: 0
 
@@ -35,8 +60,8 @@ ota:
 
 wifi:
   networks:
-  - ssid: !secret wifi_ssid
-    password: !secret wifi_password
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
   reboot_timeout: 15min
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
@@ -44,19 +69,20 @@ wifi:
     ssid: "${upper_devicename} Hotspot"
     password: !secret fallback_ssid_password
 
+# The captive portal is a fallback mechanism for when connecting to the configured WiFi fails.
+# https://esphome.io/components/captive_portal.html
+captive_portal:
+
 # Used to support POST request to send data to AirGradient
 # https://esphome.io/components/http_request.html
 http_request:
 
 # Creates a simple web server on the node that can be accessed through any browser
 # https://esphome.io/components/web_server.html
+# Turn on the webserver so we can connect and look at raw stats
 web_server:
   port: 80
   include_internal: true
-
-# The captive portal is a fallback mechanism for when connecting to the configured WiFi fails.
-# https://esphome.io/components/captive_portal.html
-captive_portal:
 
 # Create a switch for safe_mode in order to flash the device
 # Solution from this thread:
@@ -68,36 +94,313 @@ switch:
 
 button:
   - platform: restart
+    id: button_restart
     name: "Restart"
     disabled_by_default: true
-    id: button_restart
 
 output:
   - platform: gpio
     id: watchdog
     pin: GPIO2
 
-# Reset hardware watchdog every 5 minutes
+script:
+  - id: calculate_aqi
+    mode: restart # restart script if called while it's still running (because we run it after pm2.5 and pm10 sensors)
+    then:
+      - lambda: |
+          // AQI is calculated over a 24 hour minimum, but EPA says it's acceptable to
+          // report at 75%, or 18 hours: https://forum.airnowtech.org/t/aqi-calculations-overview-ozone-pm2-5-and-pm10/168
+          int hours_to_wait = 18;
+
+          // https://en.wikipedia.org/wiki/Air_quality_index#Computing_the_AQI
+          int aqi_2_5 = -1;
+          int size_2_5 = id(pm_2_5_hourly_avg).size();
+
+          if (size_2_5 >= hours_to_wait) {
+
+            float sum = 0.0;
+            for (int i = 0; i < size_2_5; i++) {
+              sum += id(pm_2_5_hourly_avg)[i];
+            }
+
+            float pm25 = sum / (float)size_2_5;
+            if (pm25 < 12.0) {
+              aqi_2_5 = (50.0 - 0.0) / (12.0 - 0.0) * (pm25 - 0.0) + 0.0;
+            } else if (pm25 < 35.4) {
+              aqi_2_5 = (100.0 - 51.0) / (35.4 - 12.1) * (pm25 - 12.1) + 51.0;
+            } else if (pm25 < 55.4) {
+              aqi_2_5 = (150.0 - 101.0) / (55.4 - 35.5) * (pm25 - 35.5) + 101.0;
+            } else if (pm25 < 150.4) {
+              aqi_2_5 = (200.0 - 151.0) / (150.4 - 55.5) * (pm25 - 55.5) + 151.0;
+            } else if (pm25 < 250.4) {
+              aqi_2_5 = (300.0 - 201.0) / (250.4 - 150.5) * (pm25 - 150.5) + 201.0;
+            } else if (pm25 < 350.4) {
+              aqi_2_5 = (400.0 - 301.0) / (350.4 - 250.5) * (pm25 - 250.5) + 301.0;
+            } else if (pm25 < 500.4) {
+              aqi_2_5 = (500.0 - 401.0) / (500.4 - 350.5) * (pm25 - 350.5) + 401.0;
+            } else {
+              aqi_2_5 = 500; // everything higher is just counted as 500
+            }
+          } else {
+            ESP_LOGD("custom", "Skipping pm2.5 AQI calculation. %d hours remaining.", hours_to_wait - size_2_5);
+          }
+
+          int aqi_10_0 = -1;
+          int size_10_0 = id(pm_10_0_hourly_avg).size();
+          if (size_10_0 >= hours_to_wait) {
+
+            float sum = 0.0;
+            for (int i = 0; i < size_10_0; i++) {
+              sum += id(pm_10_0_hourly_avg)[i];
+            }
+
+            float pm10 = sum / (float)size_10_0;
+            if (pm10 < 54.0) {
+              aqi_10_0 = (50.0 - 0.0) / (54.0 - 0.0) * (pm10 - 0.0) + 0.0;
+            } else if (pm10 < 154.0) {
+              aqi_10_0 = (100.0 - 51.0) / (154.0 - 55.0) * (pm10 - 55.0) + 51.0;
+            } else if (pm10 < 254.0) {
+              aqi_10_0 = (150.0 - 101.0) / (254.0 - 155.0) * (pm10 - 155.0) + 101.0;
+            } else if (pm10 < 354.0) {
+              aqi_10_0 = (200.0 - 151.0) / (354.0 - 255.0) * (pm10 - 255.0) + 151.0;
+            } else if (pm10 < 424.0) {
+              aqi_10_0 = (300.0 - 201.0) / (424.0 - 355.0) * (pm10 - 355.0) + 201.0;
+            } else if (pm10 < 504.0) {
+              aqi_10_0 = (400.0 - 301.0) / (504.0 - 425.0) * (pm10 - 425.0) + 301.0;
+            } else if (pm10 < 604) {
+              aqi_10_0 = (500.0 - 401.0) / (604.0 - 505.0) * (pm10 - 505.0) + 401.0;
+            } else {
+              aqi_10_0 = 500; // everything higher is just counted as 500
+            }
+          } else {
+            ESP_LOGD("custom", "Skipping pm10 AQI calculation. %d hours remaining.", hours_to_wait - size_10_0);
+          }
+
+          int aqi_calc = std::max(aqi_2_5, aqi_10_0);
+          if (aqi_calc > 0) {
+            id(aqi).publish_state(aqi_calc);
+            // Just in case we're counting down, make sure we set to zero
+            id(aqi_delay_mins) = 0;
+            if (id(aqi_delay_mins) > 0) {
+              id(aqi_delay_mins) = 0;
+              id(aqi_mins_remaining).publish_state(0);
+            }
+            // And now publish the category string
+            if (aqi_calc <= 50.0) {
+              id(aqi_category).publish_state("Good");
+            } else if (aqi_calc <= 100.0) {
+              id(aqi_category).publish_state("Moderate");
+            } else if (aqi_calc <= 150.0) {
+              id(aqi_category).publish_state("Unhealthy for Sensitive Groups");
+            } else if (aqi_calc <= 200.0) {
+              id(aqi_category).publish_state("Unhealthy");
+            } else if (aqi_calc <= 300.0) {
+              id(aqi_category).publish_state("Very Unhealthy");
+            } else if (aqi_calc <= 400.0) {
+              id(aqi_category).publish_state("Hazardous");
+            } else if (aqi_calc <= 500.0) {
+              id(aqi_category).publish_state("Hazardous"); // again
+            } else {
+              id(aqi_category).publish_state("Hazardous"); // and again
+            }
+          } else {
+            int remaining_hours = hours_to_wait - std::max(size_2_5, size_10_0);
+            ESP_LOGD("custom", "No AQI calculations available. %d hours remaining.", remaining_hours);
+            // Intervals don't quite overlap with the sensor notification windows,
+            // so let's readjust this just in case it's fallen out of sync.
+            id(aqi_delay_mins) = 60 * remaining_hours;
+            id(aqi_mins_remaining).publish_state(60 * remaining_hours);
+          }
+
+  - id: calculate_nowcast
+    mode: restart # restart script if called while it's still running
+    then:
+      # https://forum.airnowtech.org/t/the-nowcast-for-pm2-5-and-pm10/172
+      - lambda: |
+          // NowCast is always calculated over 12 hours, but this is extracted here
+          // to make debugging easier.
+          int hours_to_wait = 12;
+
+          int nowcast_2_5 = -1;
+          int size_2_5 = id(pm_2_5_hourly_avg).size();
+          if (size_2_5 > 12) {
+            size_2_5 = 12;
+          }
+          if (size_2_5 >= hours_to_wait) {
+          // if (size_2_5 >= 12) {
+            // Calculate min and max
+            float max = 0.0;
+            float min = 31337.0; // just a random large number
+            for (int i = 0; i < size_2_5; i++) {
+              float pm = id(pm_2_5_hourly_avg)[i];
+              if (pm < min) {
+                min = pm;
+              }
+              if (pm > max) {
+                max = pm;
+              }
+            }
+            // Calculate the weight factor
+            float range = max - min;
+            float rate = range / max;
+            float weight_factor = 1.0 - range;
+            if (weight_factor < 0.5) {
+              weight_factor = 0.5;
+            } else if (weight_factor > 1.0) {
+              weight_factor = 1.0;
+            }
+
+            float pm_sum = 0.0;
+            float weight_sum = 0.0;
+            for (int i = 0; i < size_2_5; i++) {
+              float weight_pow = pow(weight_factor, i);
+              pm_sum += id(pm_2_5_hourly_avg)[i] * weight_pow;
+              weight_sum += weight_pow;
+            }
+            float pm25 = pm_sum / weight_sum;
+
+            // https://en.wikipedia.org/wiki/Air_quality_index#Computing_the_AQI
+            if (pm25 < 12.0) {
+              nowcast_2_5 = (50.0 - 0.0) / (12.0 - 0.0) * (pm25 - 0.0) + 0.0;
+            } else if (pm25 < 35.4) {
+              nowcast_2_5 = (100.0 - 51.0) / (35.4 - 12.1) * (pm25 - 12.1) + 51.0;
+            } else if (pm25 < 55.4) {
+              nowcast_2_5 = (150.0 - 101.0) / (55.4 - 35.5) * (pm25 - 35.5) + 101.0;
+            } else if (pm25 < 150.4) {
+              nowcast_2_5 = (200.0 - 151.0) / (150.4 - 55.5) * (pm25 - 55.5) + 151.0;
+            } else if (pm25 < 250.4) {
+              nowcast_2_5 = (300.0 - 201.0) / (250.4 - 150.5) * (pm25 - 150.5) + 201.0;
+            } else if (pm25 < 350.4) {
+              nowcast_2_5 = (400.0 - 301.0) / (350.4 - 250.5) * (pm25 - 250.5) + 301.0;
+            } else if (pm25 < 500.4) {
+              nowcast_2_5 = (500.0 - 401.0) / (500.4 - 350.5) * (pm25 - 350.5) + 401.0;
+            } else {
+              // everything higher is just counted as 500
+              nowcast_2_5 = 500;
+            }
+          } else {
+            ESP_LOGD("custom", "Skipping pm2.5 NowCast calculation. %d hours remaining.", hours_to_wait - size_2_5);
+          }
+
+          int nowcast_10_0 = -1;
+          int size_10_0 = id(pm_10_0_hourly_avg).size();
+          if (size_10_0 > 12) {
+            size_10_0 = 12;
+          }
+          if (size_10_0 >= hours_to_wait) {
+          // if (size_10_0 >= 12) {
+            // Calculate min and max
+            float max = 0.0;
+            float min = 31337.0; // just a random large number
+            for (int i = 0; i < size_10_0; i++) {
+              float pm = id(pm_10_0_hourly_avg)[i];
+              if (pm < min) {
+                min = pm;
+              }
+              if (pm > max) {
+                max = pm;
+              }
+            }
+            // Calculate the weight factor
+            float range = max - min;
+            float rate = range / max;
+            float weight_factor = 1.0 - range;
+            if (weight_factor < 0.5) {
+              weight_factor = 0.5;
+            } else if (weight_factor > 1.0) {
+              weight_factor = 1.0;
+            }
+
+            float pm_sum = 0.0;
+            float weight_sum = 0.0;
+            for (int i = 0; i < size_10_0; i++) {
+              float weight_pow = pow(weight_factor, i);
+              pm_sum += id(pm_10_0_hourly_avg)[i] * weight_pow;
+              weight_sum += weight_pow;
+            }
+            float pm10 = pm_sum / weight_sum;
+
+            // https://en.wikipedia.org/wiki/Air_quality_index#Computing_the_AQI
+            if (pm10 < 54.0) {
+              nowcast_10_0 = (50.0 - 0.0) / (54.0 - 0.0) * (pm10 - 0.0) + 0.0;
+            } else if (pm10 < 154.0) {
+              nowcast_10_0 = (100.0 - 51.0) / (154.0 - 55.0) * (pm10 - 55.0) + 51.0;
+            } else if (pm10 < 254.0) {
+              nowcast_10_0 = (150.0 - 101.0) / (254.0 - 155.0) * (pm10 - 155.0) + 101.0;
+            } else if (pm10 < 354.0) {
+              nowcast_10_0 = (200.0 - 151.0) / (354.0 - 255.0) * (pm10 - 255.0) + 151.0;
+            } else if (pm10 < 424.0) {
+              nowcast_10_0 = (300.0 - 201.0) / (424.0 - 355.0) * (pm10 - 355.0) + 201.0;
+            } else if (pm10 < 504.0) {
+              nowcast_10_0 = (400.0 - 301.0) / (504.0 - 425.0) * (pm10 - 425.0) + 301.0;
+            } else if (pm10 < 604) {
+              nowcast_10_0 = (500.0 - 401.0) / (604.0 - 505.0) * (pm10 - 505.0) + 401.0;
+            } else {
+              // everything higher is just counted as 500
+              nowcast_10_0 = 500.0;
+            }
+
+          } else {
+            ESP_LOGD("custom", "Skipping pm10 NowCast calculation. %d hours remaining.", hours_to_wait - size_10_0);
+          }
+
+          int nowcast_calc = std::max(nowcast_2_5, nowcast_10_0);
+          if (nowcast_calc > 0) {
+            id(nowcast).publish_state(nowcast_calc);
+            // Just in case we're counting down, make sure we set to zero
+            if (id(nowcast_delay_mins) > 0) {
+              id(nowcast_delay_mins) = 0;
+              id(nowcast_mins_remaining).publish_state(0);
+            }
+            // And now publish the category string
+            if (nowcast_calc <= 50.0) {
+              id(nowcast_category).publish_state("Good");
+            } else if (nowcast_calc <= 100.0) {
+              id(nowcast_category).publish_state("Moderate");
+            } else if (nowcast_calc <= 150.0) {
+              id(nowcast_category).publish_state("Unhealthy for Sensitive Groups");
+            } else if (nowcast_calc <= 200.0) {
+              id(nowcast_category).publish_state("Unhealthy");
+            } else if (nowcast_calc <= 300.0) {
+              id(nowcast_category).publish_state("Very Unhealthy");
+            } else if (nowcast_calc <= 400.0) {
+              id(nowcast_category).publish_state("Hazardous");
+            } else if (nowcast_calc <= 500.0) {
+              id(nowcast_category).publish_state("Hazardous"); // again
+            } else {
+              id(nowcast_category).publish_state("Hazardous"); // and again
+            }
+          } else {
+            int remaining_hours = hours_to_wait - std::max(size_2_5, size_10_0);
+            ESP_LOGD("custom", "No NowCast calculations available. %d hours remaining.", remaining_hours);
+            // Intervals don't quite overlap with the sensor notification windows,
+            // so let's readjust this just in case it's fallen out of sync.
+            id(nowcast_delay_mins) = 60 * remaining_hours;
+            id(nowcast_mins_remaining).publish_state(60 * remaining_hours);
+          }
+
 interval:
-  - interval: 5min
+  # Reset hardware watchdog. This varies between hardware. 3min should be plenty.
+  - interval: 3min
     then:
       - output.turn_on: watchdog
       - delay: 20ms
       - output.turn_off: watchdog
 
+  # Send data to AirGradient API server
+  # for more details have a look at sendToServer() function:
+  # https://www.airgradient.com/open-airgradient/blog/airgradient-diy-pro-instructions/
   - interval: 5min
-    # Send data to AirGradient API server
-    # for more details have a look at sendToServer() function:
-    # https://www.airgradient.com/open-airgradient/blog/airgradient-diy-pro-instructions/
     then:
       - http_request.post:
           # AirGradient URL with full MAC address in Hex format all lower case
-          url: !lambda |-
+          url: !lambda |
             return "http://hw.airgradient.com/sensors/airgradient:" + get_mac_address() + "/measures";
           headers:
-              Content-Type: application/json
+            Content-Type: application/json
           # "!lambda return to_string(id(pm2).state);" Converts sensor output from double to string
-          body: !lambda |-
+          # Note: can't use the built-in json encoder here because it does not support nested objects.
+          body: !lambda |
             String jsonString;
             StaticJsonDocument<1024> doc;
 
@@ -109,7 +412,10 @@ interval:
             doc["pm003_count"] = to_string(id(pm_0_3um).state);
             doc["atmp"] = to_string(id(temperature).state);
             doc["rhum"] = to_string(id(humidity).state);
-            doc["boot"] = "1";
+
+            // We don't have access to the boot loop counter in esphome, so just send a 1
+            // See: https://github.com/esphome/issues/issues/1539
+            doc["boot"] = "1"; 
 
             JsonObject channels = doc.createNestedObject("channels");
 
@@ -137,6 +443,19 @@ interval:
 
             return stdJsonString;
 
+  # Decrement the AQI countdowns once per minute until they reach zero
+  - interval: 1min
+    then:
+      - lambda: |
+          if (id(aqi_delay_mins) > 0) {
+            id(aqi_delay_mins) -= 1;
+            id(aqi_mins_remaining).publish_state(id(aqi_delay_mins));
+          }
+          if (id(nowcast_delay_mins) > 0) {
+            id(nowcast_delay_mins) -= 1;
+            id(nowcast_mins_remaining).publish_state(id(nowcast_delay_mins));
+          }
+
 light:
   - platform: status_led
     name: "Status LED"
@@ -153,6 +472,7 @@ binary_sensor:
         pullup: true
     on_click:
       min_length: 5s
+      max_length: 30s
       then:
         - button.press: button_restart
 
@@ -171,149 +491,285 @@ uart:
     rx_pin: GPIO0 # Pin 12
     tx_pin: GPIO1 # Pin 13
 
+text_sensor:
+  - platform: template
+    id: aqi_category
+    name: "${upper_devicename} AQI Category"
+    icon: "mdi:weather-windy-variant"
+    update_interval: 15min
+
+  - platform: template
+    id: nowcast_category
+    name: "${upper_devicename} NowCast Category"
+    icon: "mdi:weather-windy-variant"
+    update_interval: 15min
+
 sensor:
   - platform: pmsx003
     type: PMS5003T
     uart_id: uart_pm1
-    update_interval: 3min # Sensor will go into sleep mode for extended operation lifetime
+    update_interval: $pm_update_interval
     pm_1_0:
       id: pm1_1_0
       name: "${upper_devicename} Particulate Matter <1.0µm Concentration (1)"
+      disabled_by_default: true
     pm_2_5:
       id: pm1_2_5
       name: "${upper_devicename} Particulate Matter <2.5µm Concentration (1)"
+      disabled_by_default: true
     pm_10_0:
       id: pm1_10_0
       name: "${upper_devicename} Particulate Matter <10.0µm Concentration (1)"
+      disabled_by_default: true
     pm_0_3um:
       id: pm1_0_3um
       name: "${upper_devicename} Particulate Matter >0.3µm Count (1)"
+      disabled_by_default: true
     pm_0_5um:
       id: pm1_0_5um
       name: "${upper_devicename} Particulate Matter >0.5µm Count (1)"
+      disabled_by_default: true
     pm_1_0um:
       id: pm1_1_0um
       name: "${upper_devicename} Particulate Matter >1.0µm Count (1)"
+      disabled_by_default: true
     pm_2_5um:
       id: pm1_2_5um
       name: "${upper_devicename} Particulate Matter >2.5µm Count (1)"
+      disabled_by_default: true
     temperature:
       id: pm1_temperature
       name: "${upper_devicename} Temperature (1)"
+      disabled_by_default: true
     humidity:
       id: pm1_humidity
       accuracy_decimals: 1
       name: "${upper_devicename} Relative Humidity (1)"
+      disabled_by_default: true
 
   - platform: pmsx003
     type: PMS5003T
     uart_id: uart_pm2
-    update_interval: 3min # Sensor will go into sleep mode for extended operation lifetime
+    update_interval: $pm_update_interval
     pm_1_0:
       id: pm2_1_0
       name: "${upper_devicename} Particulate Matter <1.0µm Concentration (2)"
+      disabled_by_default: true
     pm_2_5:
       id: pm2_2_5
       name: "${upper_devicename} Particulate Matter <2.5µm Concentration (2)"
+      disabled_by_default: true
     pm_10_0:
       id: pm2_10_0
       name: "${upper_devicename} Particulate Matter <10.0µm Concentration (2)"
+      disabled_by_default: true
     pm_0_3um:
       id: pm2_0_3um
       name: "${upper_devicename} Particulate Matter >0.3µm Count (2)"
+      disabled_by_default: true
     pm_0_5um:
       id: pm2_0_5um
       name: "${upper_devicename} Particulate Matter >0.5µm Count (2)"
+      disabled_by_default: true
     pm_1_0um:
       id: pm2_1_0um
       name: "${upper_devicename} Particulate Matter >1.0µm Count (2)"
+      disabled_by_default: true
     pm_2_5um:
       id: pm2_2_5um
       name: "${upper_devicename} Particulate Matter >2.5µm Count (2)"
+      disabled_by_default: true
     temperature:
       id: pm2_temperature
       name: "${upper_devicename} Temperature (2)"
+      disabled_by_default: true
     humidity:
       id: pm2_humidity
       accuracy_decimals: 1
       name: "${upper_devicename} Relative Humidity (2)"
+      disabled_by_default: true
 
-    # Calculate the average sensor values
+  # Calculate the average values across both PMS5003T sensors
   - platform: template
     id: temperature
     name: "${upper_devicename} Temperature"
-    icon: mdi:home-thermometer-outline
+    icon: mdi:thermometer
     device_class: temperature
+    state_class: "measurement"
     accuracy_decimals: 1
     unit_of_measurement: "°C"
-    lambda: return (id(pm1_temperature).state + id(pm2_temperature).state) / 2;
+    lambda: return (id(pm1_temperature).state + id(pm2_temperature).state) / 2.0;
   - platform: template
     id: humidity
     name: "${upper_devicename} Relative Humidity"
     icon: mdi:water-percent
     device_class: humidity
+    state_class: "measurement"
     accuracy_decimals: 1
     unit_of_measurement: "%"
-    lambda: return (id(pm1_humidity).state + id(pm2_humidity).state) / 2;
+    lambda: return (id(pm1_humidity).state + id(pm2_humidity).state) / 2.0;
   - platform: template
     id: pm_1_0
     name: "${upper_devicename} Particulate Matter <1.0µm Concentration"
     icon: mdi:chemical-weapon
     device_class: pm1
+    state_class: "measurement"
     accuracy_decimals: 0
     unit_of_measurement: µg/m³
-    lambda: return (id(pm1_1_0).state + id(pm2_1_0).state) / 2;
+    update_interval: $pm_update_interval
+    lambda: return (id(pm1_1_0).state + id(pm2_1_0).state) / 2.0;
   - platform: template
     id: pm_2_5
     name: "${upper_devicename} Particulate Matter <2.5µm Concentration"
     icon: mdi:chemical-weapon
     device_class: pm25
+    state_class: "measurement"
     accuracy_decimals: 0
     unit_of_measurement: µg/m³
-    lambda: return (id(pm1_2_5).state + id(pm2_2_5).state) / 2;
+    update_interval: $pm_update_interval
+    lambda: return (id(pm1_2_5).state + id(pm2_2_5).state) / 2.0;
   - platform: template
     id: pm_10_0
     name: "${upper_devicename} Particulate Matter <10.0µm Concentration"
     icon: mdi:chemical-weapon
     device_class: pm10
+    state_class: "measurement"
     accuracy_decimals: 0
     unit_of_measurement: µg/m³
-    lambda: return (id(pm1_10_0).state + id(pm2_10_0).state) / 2;
+    update_interval: $pm_update_interval
+    lambda: return (id(pm1_10_0).state + id(pm2_10_0).state) / 2.0;
   - platform: template
     id: pm_0_3um
     name: "${upper_devicename} Particulate Matter >0.3µm Count"
-    icon: mdi:counter
+    icon: mdi:blur
     accuracy_decimals: 0
+    state_class: "measurement"
     unit_of_measurement: /dL
-    lambda: return (id(pm1_0_3um).state + id(pm2_0_3um).state) / 2;
+    update_interval: $pm_update_interval
+    lambda: return (id(pm1_0_3um).state + id(pm2_0_3um).state) / 2.0;
   - platform: template
     id: pm_0_5um
     name: "${upper_devicename} Particulate Matter >0.5µm Count"
-    icon: mdi:counter
+    icon: mdi:blur
     accuracy_decimals: 0
+    state_class: "measurement"
     unit_of_measurement: /dL
-    lambda: return (id(pm1_0_5um).state + id(pm2_0_5um).state) / 2;
+    update_interval: $pm_update_interval
+    lambda: return (id(pm1_0_5um).state + id(pm2_0_5um).state) / 2.0;
   - platform: template
     id: pm_1_0um
     name: "${upper_devicename} Particulate Matter >1.0µm Count"
-    icon: mdi:counter
+    icon: mdi:blur
     accuracy_decimals: 0
+    state_class: "measurement"
     unit_of_measurement: /dL
-    lambda: return (id(pm1_1_0um).state + id(pm2_1_0um).state) / 2;
+    update_interval: $pm_update_interval
+    lambda: return (id(pm1_1_0um).state + id(pm2_1_0um).state) / 2.0;
   - platform: template
     id: pm_2_5um
     name: "${upper_devicename} Particulate Matter >2.5µm Count"
-    icon: mdi:counter
+    icon: mdi:blur
     accuracy_decimals: 0
+    state_class: "measurement"
     unit_of_measurement: /dL
-    lambda: return (id(pm1_2_5um).state + id(pm2_2_5um).state) / 2;
+    update_interval: $pm_update_interval
+    lambda: return (id(pm1_2_5um).state + id(pm2_2_5um).state) / 2.0;
 
   - platform: wifi_signal
-    name: "Wifi Strength"
     id: airgradient_wifi_signal
-    update_interval: 60s
+    name: "Wifi Strength"
+    state_class: "measurement"
+    update_interval: 1min
 
   - platform: uptime
-    name: "Uptime Sensor"
     id: uptime_sensor
-    update_interval: 60s
+    name: "Uptime Sensor"
+    update_interval: 1min
+
+  - platform: template
+    id: aqi
+    name: "${upper_devicename} AQI"
+    device_class: aqi
+    state_class: "measurement"
+    icon: "mdi:weather-windy-variant"
+    accuracy_decimals: 0
+
+  - platform: template
+    id: nowcast
+    name: "${upper_devicename} NowCast"
+    device_class: aqi
+    state_class: "measurement"
+    icon: "mdi:weather-windy-variant"
+    accuracy_decimals: 0
+
+  - platform: template
+    id: aqi_mins_remaining
+    name: "AQI: Minutes Remaining"
+    icon: mdi:timer-sand
+    accuracy_decimals: 0
+    unit_of_measurement: minutes
+
+  - platform: template
+    id: nowcast_mins_remaining
+    name: "NowCast: Minutes Remaining"
+    icon: mdi:timer-sand
+    accuracy_decimals: 0
+    unit_of_measurement: minutes
+
+  - platform: copy
+    source_id: pm_2_5
+    id: pm_2_5_1h_avg
+    name: "${upper_devicename} PM <2.5µm 1h Average"
+    disabled_by_default: true
+    device_class: pm25
+    accuracy_decimals: 1
+    filters:
+      - sliding_window_moving_average:
+          window_size: 20 # every 3 minutes = 1 hour
+          send_every: 20
+          send_first_at: 20
+    on_value:
+      lambda: |
+        // Insert the current value
+        float current = id(pm_2_5_1h_avg).state;
+        if (!isnan(current)) {
+          id(pm_2_5_hourly_avg).insert(id(pm_2_5_hourly_avg).begin(), current);
+          // Truncate anything past the first 24
+          if (id(pm_2_5_hourly_avg).size() > 24) {
+            id(pm_2_5_hourly_avg).resize(24);
+          }
+        }
+        ESP_LOGD("custom", "pm_2_5_hourly_avg size: %d", id(pm_2_5_hourly_avg).size());
+
+        // Trigger the AQI calculations (they'll restart if the pm10 finishes slightly later)
+        id(calculate_nowcast).execute();
+        id(calculate_aqi).execute();
+
+  - platform: copy
+    source_id: pm_10_0
+    id: pm_10_0_1h_avg
+    name: "${upper_devicename} PM <10.0µm 1h Average"
+    disabled_by_default: true
+    device_class: pm10
+    accuracy_decimals: 1
+    filters:
+      - sliding_window_moving_average:
+          window_size: 20 # every 3 minutes = 1 hour
+          send_every: 20
+          send_first_at: 20
+    on_value:
+      lambda: |
+        // Insert the current value
+        float current = id(pm_10_0_1h_avg).state;
+        if (!isnan(current)) {
+          id(pm_10_0_hourly_avg).insert(id(pm_10_0_hourly_avg).begin(), current);
+          // Truncate anything past the first 24
+          if (id(pm_10_0_hourly_avg).size() > 24) {
+            id(pm_10_0_hourly_avg).resize(24);
+          }
+        }
+        ESP_LOGD("custom", "pm_10_0_hourly_avg size: %d", id(pm_10_0_hourly_avg).size());
+
+        // Trigger the AQI calculations (they'll restart if the pm2.5 finishes slightly later)
+        id(calculate_nowcast).execute();
+        id(calculate_aqi).execute();
