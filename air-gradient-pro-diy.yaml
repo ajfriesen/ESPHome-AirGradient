@@ -6,6 +6,8 @@
 # Instructions:
 # - Update your device id in `substitutions`
 # - Select your temperature unit in `substitutions`
+# - Select whether you have sht4x or sht3xd just above `temperature:`
+#   (Airgradient moving to sht4x: https://forum.airgradient.com/t/sht31-vs-sht40-do-either-work/1104/3)
 # - If you have the VOC/NOx sensor installed, uncomment `platform: sgp4x` and page3 of `display`
 #
 
@@ -202,15 +204,18 @@ uart:
     id: uart_2
 
 sensor:
+  # If your SHT sensor says "sht3x" on it replace platform with `sht3xd`
   # https://esphome.io/components/sensor/sht3xd.html
-  - platform: sht3xd
+  # - platform: sht3xd
+
+  - platform: sht4x
     temperature:
       id: temp
       name: ${upper_devicename} Temperature
     humidity:
       id: humidity
       name: ${upper_devicename} Relative Humidity
-    address: 0x44
+    address: 0x44 # Same for both sht3x and sht4x
     update_interval: 10s
 
   # https://esphome.io/components/sensor/pmsx003.html

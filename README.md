@@ -17,11 +17,20 @@ I have written a blog post about this here: [Measuring Air Quality in your Home 
 
 # 1. Add the ESPHome addon
 
-Klick here: [![Open the ESPHome Add-n.](https://my.home-assistant.io/badges/supervisor_addon.svg)](https://my.home-assistant.io/redirect/supervisor_addon/?addon=5c53de3b_esphome)
+Click here: [![Open the ESPHome Add-n.](https://my.home-assistant.io/badges/supervisor_addon.svg)](https://my.home-assistant.io/redirect/supervisor_addon/?addon=5c53de3b_esphome)
+
+Note: This deep link won't work if you're running Home Assistant in Docker. In that case you'll need to install
+ESPHome via Docker or manually: https://esphome.io/guides/getting_started_command_line.html
+
+Eg: `docker run -d --name=esphome --net=host -e TZ=YOUR_TZ_VALUE -v YOUR_ESPHOME_CONFIG_FOLDER:/config esphome/esphome`
 
 # 2. Download whatever font you feel fancy.
 
 Follow the [ESPHome font docs](https://esphome.io/components/display/index.html#drawing-static-text)
+
+- Copy your font into the ESPHome directory (if running in Docker, the folder mapped to the `/config` mount point).
+- Change the font config with the path to your font:
+  eg. swap `- file: "gfonts://Ubuntu"` with `- file: "./yourfont.ttf"`
 
 # 3. Add your secrets
 
@@ -44,10 +53,14 @@ fallback_ssid_password: ""
 or you can just include your Home Assistant `secrets.yaml`:
 [How do I use my Home Assistant secrets.yaml?](https://esphome.io/guides/faq.html?highlight=secret#how-do-i-use-my-home-assistant-secrets-yaml)
 
+If you are using the ESPHome web interface you can edit the `secrets.yaml` via a button in the top
+right of the page.
+
 # 4. Plug in your AirGradient
 
 You can either plug it in the device running Home Assistant or your laptop/PC. 
-Note: You must plug into the D1 Mini, not the D1 Mini Shield. The shield's USB port is only used for power.
+Note: You must plug into the D1 Mini itself, not the D1 Mini Shield or external USB port of the Airgradient case.
+The shield's USB port is only used for power.
 
 # 5. Add a new device
 
