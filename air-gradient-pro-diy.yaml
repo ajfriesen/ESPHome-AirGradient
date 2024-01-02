@@ -154,15 +154,11 @@ display:
           it.print(it.get_width() - 28, 62, id(font_layout), TextAlign::BOTTOM_LEFT, "µg/m³");
       # - id: page3
       #   lambda: |-
-      #     it.print(51, 2, id(font_layout), TextAlign::TOP_RIGHT, "CO₂");
-      #     it.printf(it.get_width() - 30, 18, id(font_data), TextAlign::BOTTOM_RIGHT, isnan(id(co2).state) ? "N/A" : "%.0f", id(co2).state);
-      #     it.print(it.get_width() - 28, 16, id(font_layout), TextAlign::BOTTOM_LEFT, "ppm");
+      #     it.print(50, 2, id(font_layout), TextAlign::TOP_RIGHT, "VOC");
+      #     it.printf(it.get_width() - 30, 18, id(font_data), TextAlign::BOTTOM_RIGHT, isnan(id(voc).state) ? "N/A" : "%.0f", id(voc).state);
 
-      #     it.print(50, 25, id(font_layout), TextAlign::TOP_RIGHT, "VOC");
-      #     it.printf(it.get_width() - 30, 41, id(font_data), TextAlign::BOTTOM_RIGHT, isnan(id(voc).state) ? "N/A" : "%.0f", id(voc).state);
-
-      #     it.print(50, 48, id(font_layout), TextAlign::TOP_RIGHT, "NOx");
-      #     it.printf(it.get_width() - 30, 64, id(font_data), TextAlign::BOTTOM_RIGHT, isnan(id(nox).state) ? "N/A" : "%.0f", id(nox).state);
+      #     it.print(50, 25, id(font_layout), TextAlign::TOP_RIGHT, "NOx");
+      #     it.printf(it.get_width() - 30, 41, id(font_data), TextAlign::BOTTOM_RIGHT, isnan(id(nox).state) ? "N/A" : "%.0f", id(nox).state);
 
 interval:
   - interval: 10s
