@@ -541,11 +541,23 @@ sensor:
       id: pm1_temperature
       name: "${upper_devicename} Temperature (1)"
       disabled_by_default: true
+      filters:
+          # https://forum.airgradient.com/t/outdoor-temperature-and-humidity-reading-correction/1544/19
+        - lambda: !lambda |-
+            // Remove line with (x > 6000) once the negative number issue fix is merged in https://github.com/esphome/issues/issues/3814
+            if (x > 6000) return ((x - 6553.6) * 1.327) - 6.738;
+            if (x < 10.0) return (x * 1.327) - 6.738;
+            return (x * 1.181) - 5.113;
     humidity:
       id: pm1_humidity
       accuracy_decimals: 1
       name: "${upper_devicename} Relative Humidity (1)"
       disabled_by_default: true
+      filters:
+          # https://www.airgradient.com/blog/linear-regression-improves-sensor-accuracy/
+        # - lambda: return x * 1.500574 - 4.76;
+          # https://forum.airgradient.com/t/open-air-outdoor-air-quality-monitor-humidity-readings-are-off/1171/2
+        - lambda: return x * 1.3921 - 1.0245;
 
   - platform: pmsx003
     type: PMS5003T
@@ -583,11 +595,23 @@ sensor:
       id: pm2_temperature
       name: "${upper_devicename} Temperature (2)"
       disabled_by_default: true
+      filters:
+          # https://forum.airgradient.com/t/outdoor-temperature-and-humidity-reading-correction/1544/19
+        - lambda: !lambda |-
+            // Remove line with (x > 6000) once the negative number issue fix is merged in https://github.com/esphome/issues/issues/3814
+            if (x > 6000) return ((x - 6553.6) * 1.327) - 6.738;
+            if (x < 10.0) return (x * 1.327) - 6.738;
+            return (x * 1.181) - 5.113;
     humidity:
       id: pm2_humidity
       accuracy_decimals: 1
       name: "${upper_devicename} Relative Humidity (2)"
       disabled_by_default: true
+      filters:
+          # https://www.airgradient.com/blog/linear-regression-improves-sensor-accuracy/
+        # - lambda: return x * 1.500574 - 4.76;
+          # https://forum.airgradient.com/t/open-air-outdoor-air-quality-monitor-humidity-readings-are-off/1171/2
+        - lambda: return x * 1.3921 - 1.0245;
 
   # Calculate the average values across both PMS5003T sensors
   - platform: template
