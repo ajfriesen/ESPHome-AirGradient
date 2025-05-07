@@ -1,11 +1,11 @@
 esphome:
   name: air-gradient
-  platform: ESP8266
-  board: d1_mini_pro
-
   project:
     name: ajfriesen.ESPHome-AirGradient
     version: "1.0"
+
+esp8266:
+  board: d1_mini_pro
 
 # Enable logging
 logger:
@@ -22,6 +22,7 @@ ota:
 switch:
   - platform: safe_mode
     name: "Flash Mode (Safe Mode)"
+    id: safe_mode_switch
 
 button:
   - platform: template
@@ -30,7 +31,7 @@ button:
     icon: "mdi:cellphone-arrow-down"
     on_press:
       then:
-        - switch.toggle: safe_mode
+        - switch.toggle: safe_mode_switch
 
 dashboard_import:
 # package_import_url: github://esphome/esphome-project-template/project-template-esp32.yaml@v6
